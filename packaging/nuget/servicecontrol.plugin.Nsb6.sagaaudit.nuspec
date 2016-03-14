@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>ServiceControl.Plugin.Nsb6.SagaAudit</id>
+    <title>ServiceControl plugin that enables audit of saga state changes for NServiceBus version 6.x</title>
+    <version>$version$</version>
+    <authors>$authors$</authors>
+    <owners>$owners$</owners>
+    <licenseUrl>$licenseUrl$</licenseUrl>
+    <projectUrl>$projectUrl$</projectUrl>
+    <iconUrl>$iconUrl$</iconUrl>
+    <requireLicenseAcceptance>$requireLicenseAcceptance$</requireLicenseAcceptance>
+    <description>Enables audit of Saga state changes</description>
+    <releaseNotes></releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>nservicebus servicebus msmq cqrs publish subscribe</tags>
+    <dependencies>
+		<dependency id="NServiceBus" version="[6.0.0-unstable, 7.0.0)" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\..\src\ServiceControl.Plugin.Nsb6.SagaAudit\bin\release\ServiceControl.Plugin.Nsb6.SagaAudit.*" target="lib\net45" />
+  </files>
+</package>
