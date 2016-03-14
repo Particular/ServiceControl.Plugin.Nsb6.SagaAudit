@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>ServiceControl.Plugin.Nsb6.CustomChecks</id>
+    <title>ServiceControl Plugin for CustomChecks for NServiceBus version 6.x</title>
+    <version>$version$</version>
+    <authors>NServiceBus Ltd</authors>
+    <owners>Particular</owners>
+    <licenseUrl>http://particular.net/LicenseAgreement</licenseUrl>
+    <projectUrl>http://particular.net/</projectUrl>
+    <iconUrl>http://s3.amazonaws.com/nuget.images/NServiceBus_32.png</iconUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <description>The endpoint plugin to connect an endpoint to Service Control</description>
+    <releaseNotes></releaseNotes>
+    <copyright>Copyright NServiceBus. All rights reserved</copyright>
+    <tags>nservicebus servicebus msmq cqrs publish subscribe</tags>
+    <dependencies>
+		<dependency id="NServiceBus" version="[6.0.0-unstable, 7.0.0)" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\..\src\ServiceControl.Plugin.CustomChecks\bin\Release\ServiceControl.Plugin.Nsb6.CustomChecks.*" target="lib\net452" />
+  </files>
+</package>

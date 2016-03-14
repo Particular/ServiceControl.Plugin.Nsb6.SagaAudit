@@ -2,41 +2,40 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.Pipeline;
-    using NServiceBus.Pipeline.Contexts;
-    using NServiceBus.Saga;
     using NServiceBus.Sagas;
 
-    class CaptureSagaStateBehavior : IBehavior<IncomingContext>
+    class CaptureSagaStateBehavior : Behavior<IInvokeHandlerContext>
     {
-        Configure configure;
         SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
+        string endpointName;
 
-        public CaptureSagaStateBehavior(Configure configure, ServiceControlBackend backend)
+        public CaptureSagaStateBehavior(string endpointName, ServiceControlBackend backend)
         {
-            this.configure = configure;
+            this.endpointName = endpointName;
             this.backend = backend;
         }
 
-        public void Invoke(IncomingContext context, Action next)
+        public override async Task Invoke(IInvokeHandlerContext context, Func<Task> next)
         {
             var saga = context.MessageHandler.Instance as Saga;
 
             if (saga == null)
             {
-                next();
-                return;
+                await next().ConfigureAwait(false);
             }
 
             sagaAudit = new SagaUpdatedMessage
                 {
                     StartTime = DateTime.UtcNow
                 };
-            context.Set(sagaAudit);
-            next();
+            context.Extensions.Set(sagaAudit);
+
+            await next().ConfigureAwait(false);
 
             if (saga.Entity == null)
             {
@@ -44,36 +43,40 @@
             }
 
             sagaAudit.FinishTime = DateTime.UtcNow;
-            AuditSaga(saga, context);
+            await AuditSaga(saga, context).ConfigureAwait(false);
         }
 
-        void AuditSaga(Saga saga, IncomingContext context)
+        Task AuditSaga(Saga saga, IInvokeHandlerContext context)
         {
             string messageId;
 
-            if (!context.IncomingLogicalMessage.Headers.TryGetValue(Headers.MessageId, out messageId))
+            if (!context.MessageHeaders.TryGetValue(Headers.MessageId, out messageId))
             {
-                return;
+                return Task.FromResult(0);
             }
 
-            var activeSagaInstance = context.Get<ActiveSagaInstance>();
-            var sagaStateString = Serializer.Serialize(saga.Entity);
-            var messageType = context.IncomingLogicalMessage.MessageType.FullName;
-            var headers = context.IncomingLogicalMessage.Headers;
+            var activeSagaInstance = context.Extensions.Get<ActiveSagaInstance>();
+
+            // TODO: HOW?? Internalize Json??
+            var sagaStateString = string.Empty;
+            // var sagaStateString = Serializer.Serialize(saga.Entity);
+
+            var messageType = context.MessageMetadata.MessageType.FullName;
+            var headers = context.MessageHeaders;
 
             sagaAudit.Initiator = BuildSagaChangeInitatorMessage(headers, messageId, messageType);
             sagaAudit.IsNew = activeSagaInstance.IsNew;
             sagaAudit.IsCompleted = saga.Completed;
-            sagaAudit.Endpoint = configure.Settings.EndpointName();
+            sagaAudit.Endpoint = endpointName;
             sagaAudit.SagaId = saga.Entity.Id;
             sagaAudit.SagaType = saga.GetType().FullName;
             sagaAudit.SagaState = sagaStateString;
 
             AssignSagaStateChangeCausedByMessage(context);
-            backend.Send(sagaAudit);
+            return backend.Send(sagaAudit);
         }
 
-        public SagaChangeInitiator BuildSagaChangeInitatorMessage(Dictionary<string, string> headers, string messageId, string messageType )
+        public SagaChangeInitiator BuildSagaChangeInitatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType )
         {
 
             string originatingMachine;
@@ -105,13 +108,13 @@
                 };
         }
 
-        void AssignSagaStateChangeCausedByMessage(IncomingContext context)
+        void AssignSagaStateChangeCausedByMessage(IInvokeHandlerContext context)
         {
             string sagaStateChange;
 
-            if (!context.PhysicalMessage.Headers.TryGetValue("ServiceControl.SagaStateChange", out sagaStateChange))
+            if (!context.MessageHeaders.TryGetValue("ServiceControl.SagaStateChange", out sagaStateChange))
             {
-                sagaStateChange = String.Empty;
+                sagaStateChange = string.Empty;
             }
 
             var statechange = "Updated";
@@ -124,13 +127,13 @@
                 statechange = "Completed";
             }
 
-            if (!String.IsNullOrEmpty(sagaStateChange))
+            if (!string.IsNullOrEmpty(sagaStateChange))
             {
                 sagaStateChange += ";";
             }
-            sagaStateChange += String.Format("{0}:{1}", sagaAudit.SagaId, statechange);
+            sagaStateChange += $"{sagaAudit.SagaId}:{statechange}";
 
-            context.PhysicalMessage.Headers["ServiceControl.SagaStateChange"] = sagaStateChange;
+            context.Headers["ServiceControl.SagaStateChange"] = sagaStateChange;
         }
 
     }

@@ -1,68 +1,61 @@
 ﻿namespace ServiceControl.Plugin.SagaAudit
 {
     using System;
+    using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
+    using NServiceBus.DelayedDelivery;
+    using NServiceBus.DeliveryConstraints;
     using NServiceBus.Pipeline;
-    using NServiceBus.Pipeline.Contexts;
-    using NServiceBus.Unicast;
 
-    class CaptureSagaResultingMessagesBehavior : IBehavior<OutgoingContext>
+    class CaptureSagaResultingMessagesBehavior : Behavior<IOutgoingLogicalMessageContext>
     {
-
-        SagaUpdatedMessage sagaUpdatedMessage;
-
-        public void Invoke(OutgoingContext context, Action next)
+        public override Task Invoke(IOutgoingLogicalMessageContext context, Func<Task> next)
         {
             AppendMessageToState(context);
-            next();
+            return next();
         }
 
-        void AppendMessageToState(OutgoingContext context)
+        void AppendMessageToState(IOutgoingLogicalMessageContext context)
         {
-            if (!context.TryGet(out sagaUpdatedMessage))
+            if (!context.Extensions.TryGet(out sagaUpdatedMessage))
             {
                 return;
             }
-            var logicalMessage = context.OutgoingLogicalMessage;
+            var logicalMessage = context.Message;
             if (logicalMessage == null)
             {
                 //this can happen on control messages
                 return;
             }
 
-            var sendOptions = context.DeliveryOptions as SendOptions;
-            if (sendOptions != null)
+            TimeSpan? deliveryDelay = null;
+            DelayDeliveryWith delayDeliveryWith;
+            if (context.Extensions.TryGetDeliveryConstraint(out delayDeliveryWith))
             {
-                var sagaResultingMessage = new SagaChangeOutput
-                {
-                    
-                    ResultingMessageId = context.OutgoingMessage.Id,
-                    TimeSent = DateTimeExtensions.ToUtcDateTime(context.OutgoingMessage.Headers[Headers.TimeSent]),
-                    MessageType = logicalMessage.MessageType.ToString(),
-                    DeliveryDelay = sendOptions.DelayDeliveryWith,
-                    DeliveryAt = sendOptions.DeliverAt,
-                    Destination = sendOptions.Destination.ToString(),
-                    Intent = "Send" //TODO: How to get the proper message intent!?
-                };
-                sagaUpdatedMessage.ResultingMessages.Add(sagaResultingMessage);
+                deliveryDelay = delayDeliveryWith.Delay;
             }
 
-            if (context.DeliveryOptions is PublishOptions)
+            DateTime? doNotDeliverBefore = null;
+            DoNotDeliverBefore notDeliverBefore;
+            if (context.Extensions.TryGetDeliveryConstraint(out notDeliverBefore))
             {
-                var sagaResultingMessage = new SagaChangeOutput
-                {
-                    ResultingMessageId = context.OutgoingMessage.Id,
-                    TimeSent = DateTimeExtensions.ToUtcDateTime(context.OutgoingMessage.Headers[Headers.TimeSent]),
-                    MessageType = logicalMessage.MessageType.ToString(),
-                    //TODO: Can we remove the DeliveryDelay and DeliveryAt here??
-                    //DeliveryDelay = publishOptions.DelayDeliveryWith,
-                    //DeliveryAt = publishOptions.DeliverAt,
-                    //Destination = GetDestination(context),
-                    Intent = "Publish" //TODO: get the message intent the right way!
-                };
-                sagaUpdatedMessage.ResultingMessages.Add(sagaResultingMessage);
+                doNotDeliverBefore = notDeliverBefore.At;
             }
+
+            var sagaResultingMessage = new SagaChangeOutput
+            {
+                ResultingMessageId = context.MessageId,
+                TimeSent = DateTimeExtensions.ToUtcDateTime(context.Headers[Headers.TimeSent]),
+                MessageType = logicalMessage.MessageType.ToString(),
+                DeliveryDelay = deliveryDelay,
+                DeliveryAt = doNotDeliverBefore,
+                Destination = string.Empty /* TODO: How to get this properly, maybe hook in later in the pipeline?*/,
+                Intent = context.Headers[Headers.MessageIntent]
+            };
+            sagaUpdatedMessage.ResultingMessages.Add(sagaResultingMessage);
         }
+
+        SagaUpdatedMessage sagaUpdatedMessage;
     }
 }

@@ -1,104 +1,118 @@
 ﻿namespace ServiceControl.Plugin
 {
     using System;
+    using System.Collections.Generic;
     using System.Configuration;
     using System.IO;
+    using System.Net;
+    using System.Runtime.Serialization;
+    using System.Runtime.Serialization.Json;
     using System.Text;
+    using System.Threading.Tasks;
+    using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.Config;
-    using NServiceBus.Serializers.Binary;
-    using NServiceBus.Serializers.Json;
+    using NServiceBus.Extensibility;
+    using NServiceBus.Performance.TimeToBeReceived;
+    using NServiceBus.Routing;
+    using NServiceBus.Settings;
+    using NServiceBus.Support;
     using NServiceBus.Transports;
-    using NServiceBus.Unicast;
     using NServiceBus.Unicast.Transport;
-    using NServiceBus.CircuitBreakers;
 
     class ServiceControlBackend
     {
-        Configure configure;
-        CriticalError criticalError;
-        public  ServiceControlBackend(ISendMessages messageSender, Configure configure, CriticalError criticalError)
+        public ServiceControlBackend(IDispatchMessages messageSender, ReadOnlySettings settings, CriticalError criticalError)
         {
-            this.configure = configure;
+            this.settings = settings;
             this.criticalError = criticalError;
             this.messageSender = messageSender;
-            serializer = new JsonMessageSerializer(new SimpleMessageMapper());
+            serializer = new DataContractJsonSerializer(typeof(SagaUpdatedMessage), new DataContractJsonSerializerSettings
+            {
+                DateTimeFormat = new DateTimeFormat("o"),
+                EmitTypeInformation = EmitTypeInformation.Always,
+            });
 
             serviceControlBackendAddress = GetServiceControlAddress();
-            VerifyIfServiceControlQueueExists();
 
             circuitBreaker =
-            new RepeatedFailuresOverTimeCircuitBreaker("ServiceControlConnectivity", TimeSpan.FromMinutes(2),
-                ex =>
-                    criticalError.Raise(
-                        "This endpoint is repeatedly unable to contact the ServiceControl backend to report endpoint information. You have the ServiceControl plugins installed in your endpoint. However, please ensure that the Particular ServiceControl service is installed on this machine, " +
-                                   "or if running ServiceControl on a different machine, then ensure that your endpoint's app.config / web.config, AppSettings has the following key set appropriately: ServiceControl/Queue. \r\n" +
-                                   @"For example: <add key=""ServiceControl/Queue"" value=""particular.servicecontrol@machine""/>" +
-                                   "\r\n", ex));
+                new RepeatedFailuresOverTimeCircuitBreaker("ServiceControlConnectivity", TimeSpan.FromMinutes(2),
+                    ex =>
+                        criticalError.Raise(
+                            "This endpoint is repeatedly unable to contact the ServiceControl backend to report endpoint information. You have the ServiceControl plugins installed in your endpoint. However, please ensure that the Particular ServiceControl service is installed on this machine, " +
+                            "or if running ServiceControl on a different machine, then ensure that your endpoint's app.config / web.config, AppSettings has the following key set appropriately: ServiceControl/Queue. \r\n" +
+                            @"For example: <add key=""ServiceControl/Queue"" value=""particular.servicecontrol@machine""/>" +
+                            "\r\n", ex));
         }
 
-        public void Send(object messageToSend, TimeSpan timeToBeReceived)
+        public async Task Send(SagaUpdatedMessage result, TimeSpan timeToBeReceived)
         {
-            var message = new TransportMessage
-            {
-                TimeToBeReceived = timeToBeReceived
-            };
+            // result.Apply(settings);
 
+            byte[] body;
             using (var stream = new MemoryStream())
             {
-                serializer.Serialize(new[] { messageToSend }, stream);
-                message.Body = stream.ToArray();
+                var resultAsObject = new object[] { result };
+                serializer.WriteObject(stream, resultAsObject);
+                body = stream.ToArray();
             }
 
             //hack to remove the type info from the json
-            var bodyString = Encoding.UTF8.GetString(message.Body);
+            var bodyString = Encoding.UTF8.GetString(body);
 
-            var toReplace = ", " + messageToSend.GetType().Assembly.GetName().Name;
+            var toReplace = "\"__type\":\"ReportCustomCheckResult:#ServiceControl.EndpointPlugin.Messages.SagaState\"";
 
-            bodyString = bodyString.Replace(toReplace, ", ServiceControl");
+            bodyString = bodyString.Replace(toReplace, "\"$type\":\"ServiceControl.EndpointPlugin.Messages.SagaState.ReportCustomCheckResult, ServiceControl\"");
 
-            message.Body = Encoding.UTF8.GetBytes(bodyString);
+            body = Encoding.UTF8.GetBytes(bodyString);
             // end hack
-            message.Headers[Headers.EnclosedMessageTypes] = messageToSend.GetType().FullName;
-            message.Headers[Headers.ContentType] = ContentTypes.Json; //Needed for ActiveMQ transport
+            var headers = new Dictionary<string, string>();
+            headers[Headers.EnclosedMessageTypes] = result.GetType().FullName;
+            headers[Headers.ContentType] = ContentTypes.Json; //Needed for ActiveMQ transport
+            headers[Headers.ReplyToAddress] = settings.LocalAddress();
+            headers[Headers.MessageIntent] = MessageIntentEnum.Send.ToString();
 
             try
             {
-                messageSender.Send(message, new SendOptions(serviceControlBackendAddress) { ReplyToAddress = configure.LocalAddress });
+                var outgoingMessage = new OutgoingMessage(Guid.NewGuid().ToString(), headers, body);
+                var operation = new TransportOperation(outgoingMessage, new UnicastAddressTag(serviceControlBackendAddress), deliveryConstraints: new[] { new DiscardIfNotReceivedBefore(timeToBeReceived) });
+                await messageSender.Dispatch(new TransportOperations(operation), new ContextBag()).ConfigureAwait(false);
                 circuitBreaker.Success();
             }
             catch (Exception ex)
             {
-                circuitBreaker.Failure(ex);
-            }            
+                await circuitBreaker.Failure(ex).ConfigureAwait(false);
+            }
         }
 
-        public void Send(object messageToSend)
+        public Task Send(SagaUpdatedMessage messageToSend)
         {
-            Send(messageToSend, TimeSpan.MaxValue);
+            return Send(messageToSend, TimeSpan.MaxValue);
         }
 
-        Address GetServiceControlAddress()
+        string GetServiceControlAddress()
         {
             var queueName = ConfigurationManager.AppSettings[@"ServiceControl/Queue"];
-            if (!String.IsNullOrEmpty(queueName))
+            if (!string.IsNullOrEmpty(queueName))
             {
-                return Address.Parse(queueName);
+                return queueName;
             }
 
-            Address errorAddress;
+            string errorAddress;
             if (TryGetErrorQueueAddress(out errorAddress))
-            { 
-                return new Address("Particular.ServiceControl", errorAddress.Machine);
+            {
+                var qm = Parse(errorAddress);
+                return "Particular.ServiceControl"+ "@" + qm.Item2;
             }
 
             if (VersionChecker.CoreVersionIsAtLeast(4, 1))
             {
                 //audit config was added in 4.1
-                Address address;
+                string address;
                 if (TryGetAuditAddress(out address))
                 {
-                    return new Address("Particular.ServiceControl", address.Machine);
+                    var qm = Parse(errorAddress);
+                    return "Particular.ServiceControl" + "@" + qm.Item2;
                 }
             }
 
@@ -106,24 +120,24 @@
         }
 
 
-        bool TryGetErrorQueueAddress(out Address address)
+        bool TryGetErrorQueueAddress(out string address)
         {
-            var faultsForwarderConfig = configure.Settings.GetConfigSection<MessageForwardingInCaseOfFaultConfig>();
-            if (faultsForwarderConfig != null && !string.IsNullOrEmpty(faultsForwarderConfig.ErrorQueue))
+            var faultsForwarderConfig = settings.GetConfigSection<MessageForwardingInCaseOfFaultConfig>();
+            if (!string.IsNullOrEmpty(faultsForwarderConfig?.ErrorQueue))
             {
-                address = Address.Parse(faultsForwarderConfig.ErrorQueue);
+                address = faultsForwarderConfig.ErrorQueue;
                 return true;
             }
             address = null;
             return false;
         }
 
-        bool TryGetAuditAddress(out Address address)
+        bool TryGetAuditAddress(out string address)
         {
-            var auditConfig = configure.Settings.GetConfigSection<AuditConfig>();
-            if (auditConfig != null && !string.IsNullOrEmpty(auditConfig.QueueName))
+            var auditConfig = settings.GetConfigSection<AuditConfig>();
+            if (!string.IsNullOrEmpty(auditConfig?.QueueName))
             {
-                address = Address.Parse(auditConfig.QueueName);
+                address = auditConfig.QueueName;
                 return true;
             }
             address = null;
@@ -131,7 +145,7 @@
             return false;
         }
 
-        void VerifyIfServiceControlQueueExists()
+        public async Task VerifyIfServiceControlQueueExists()
         {
             try
             {
@@ -139,7 +153,10 @@
                 // If we are unable to send a message because the queue doesn't exist, then we can fail fast.
                 // We currently don't have a way to check if Queue exists in a transport agnostic way, 
                 // hence the send.
-                messageSender.Send(ControlMessage.Create(), new SendOptions(serviceControlBackendAddress) { ReplyToAddress = configure.LocalAddress });
+                var outgoingMessage = ControlMessageFactory.Create(MessageIntentEnum.Send);
+                outgoingMessage.Headers[Headers.ReplyToAddress] = settings.LocalAddress();
+                var operation = new TransportOperation(outgoingMessage, new UnicastAddressTag(serviceControlBackendAddress));
+                await messageSender.Dispatch(new TransportOperations(operation), new ContextBag()).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -151,9 +168,36 @@
             }
         }
 
-        JsonMessageSerializer serializer;
-        ISendMessages messageSender;
-        Address serviceControlBackendAddress;
+        static Tuple<string, string> Parse(string destination)
+        {
+            if (string.IsNullOrEmpty(destination))
+            {
+                throw new ArgumentException("Invalid destination address specified", nameof(destination));
+            }
+
+            var arr = destination.Split('@');
+
+            var queue = arr[0];
+            var machine = RuntimeEnvironment.MachineName;
+
+            if (string.IsNullOrWhiteSpace(queue))
+            {
+                throw new ArgumentException("Invalid destination address specified", nameof(destination));
+            }
+
+            if (arr.Length == 2)
+                if (arr[1] != "." && arr[1].ToLower() != "localhost" && arr[1] != IPAddress.Loopback.ToString())
+                    machine = arr[1];
+
+            return new Tuple<string, string>(queue, machine);
+        }
+
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
+        CriticalError criticalError;
+        IDispatchMessages messageSender;
+
+        DataContractJsonSerializer serializer;
+        string serviceControlBackendAddress;
+        ReadOnlySettings settings;
     }
 }

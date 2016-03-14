@@ -3,8 +3,8 @@
     using NServiceBus;
     using NServiceBus.Features;
     using NServiceBus.Pipeline;
+    using Plugin;
     using Plugin.SagaAudit;
-    using ServiceControl.Plugin;
 
     public class SagaAudit : Feature
     {
@@ -13,7 +13,7 @@
             EnableByDefault();
             DependsOn<Sagas>();
         }
-        
+
         protected override void Setup(FeatureConfigurationContext context)
         {
             context.Container.ConfigureComponent<ServiceControlBackend>(DependencyLifecycle.SingleInstance);
