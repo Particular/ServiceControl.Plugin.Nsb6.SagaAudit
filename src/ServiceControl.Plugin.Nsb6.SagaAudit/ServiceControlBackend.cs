@@ -57,15 +57,8 @@
                 body = stream.ToArray();
             }
 
-            //hack to remove the type info from the json
-            var bodyString = Encoding.UTF8.GetString(body);
+            body = ReplaceTypeToken(body);
 
-            var toReplace = "\"__type\":\"ReportCustomCheckResult:#ServiceControl.EndpointPlugin.Messages.SagaState\"";
-
-            bodyString = bodyString.Replace(toReplace, "\"$type\":\"ServiceControl.EndpointPlugin.Messages.SagaState.ReportCustomCheckResult, ServiceControl\"");
-
-            body = Encoding.UTF8.GetBytes(bodyString);
-            // end hack
             var headers = new Dictionary<string, string>();
             headers[Headers.EnclosedMessageTypes] = result.GetType().FullName;
             headers[Headers.ContentType] = ContentTypes.Json; //Needed for ActiveMQ transport
@@ -83,6 +76,17 @@
             {
                 await circuitBreaker.Failure(ex).ConfigureAwait(false);
             }
+        }
+
+        static byte[] ReplaceTypeToken(byte[] body)
+        {
+            var bodyString = Encoding.UTF8.GetString(body);
+
+            var toReplace = "\"__type\":\"ReportCustomCheckResult:#ServiceControl.EndpointPlugin.Messages.SagaState\"";
+
+            bodyString = bodyString.Replace(toReplace, "\"$type\":\"ServiceControl.EndpointPlugin.Messages.SagaState.ReportCustomCheckResult, ServiceControl\"");
+
+            return Encoding.UTF8.GetBytes(bodyString);
         }
 
         public Task Send(SagaUpdatedMessage messageToSend)
