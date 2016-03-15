@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
     using NUnit.Framework;
-    using ServiceControl.Plugin.SagaAudit;
+    using Plugin.SagaAudit;
 
     public class When_a_message_with_no_headers_arrive 
     {
