@@ -1,12 +1,14 @@
 ﻿namespace ServiceControl.Plugin.SagaAudit
 {
     using System;
+    using System.Linq;
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.DelayedDelivery;
     using NServiceBus.DeliveryConstraints;
     using NServiceBus.Pipeline;
+    using NServiceBus.Routing;
 
     class CaptureSagaResultingMessagesBehavior : Behavior<IOutgoingLogicalMessageContext>
     {
@@ -50,12 +52,18 @@
                 MessageType = logicalMessage.MessageType.ToString(),
                 DeliveryDelay = deliveryDelay,
                 DeliveryAt = doNotDeliverBefore,
-                Destination = string.Empty /* TODO: How to get this properly, maybe hook in later in the pipeline?*/,
+                Destination = GetDestinationForUnicastMessages(context),
                 Intent = context.Headers[Headers.MessageIntent]
             };
             sagaUpdatedMessage.ResultingMessages.Add(sagaResultingMessage);
         }
 
         SagaUpdatedMessage sagaUpdatedMessage;
+
+        static string GetDestinationForUnicastMessages(IOutgoingLogicalMessageContext context)
+        {
+            var sendAddressTags = context.RoutingStrategies.OfType<UnicastRoutingStrategy>().Select(urs => urs.Apply(context.Headers)).Cast<UnicastAddressTag>().ToList();
+            return sendAddressTags.Count() != 1 ? null : sendAddressTags.First().Destination;
+        }
     }
 }
