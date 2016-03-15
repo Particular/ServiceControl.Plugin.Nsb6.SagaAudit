@@ -2,7 +2,9 @@
 {
     using NServiceBus;
     using NServiceBus.Features;
+    using NServiceBus.MessageInterfaces.MessageMapper.Reflection;
     using NServiceBus.Pipeline;
+    using NServiceBus.Settings;
     using Plugin;
     using Plugin.SagaAudit;
 
@@ -20,6 +22,19 @@
 
             context.Pipeline.Register<CaptureSagaStateRegistration>();
             context.Pipeline.Register<CaptureSagaResultingMessageRegistration>();
+
+            context.Container.RegisterSingleton(BuildSerializer(context.Settings));
+        }
+
+        static CaptureSagaStateSerializer BuildSerializer(ReadOnlySettings settings)
+        {
+            var definition = new JsonSerializer();
+
+            var factory = definition.Configure(settings);
+
+            var serializer = factory(new MessageMapper());
+
+            return new CaptureSagaStateSerializer(serializer);
         }
 
         class CaptureSagaStateRegistration : RegisterStep

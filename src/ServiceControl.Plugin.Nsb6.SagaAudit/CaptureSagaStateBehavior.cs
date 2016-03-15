@@ -13,10 +13,12 @@
         SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
         string endpointName;
+        readonly CaptureSagaStateSerializer serializer;
 
-        public CaptureSagaStateBehavior(string endpointName, ServiceControlBackend backend)
+        public CaptureSagaStateBehavior(string endpointName, CaptureSagaStateSerializer serializer, ServiceControlBackend backend)
         {
             this.endpointName = endpointName;
+            this.serializer = serializer;
             this.backend = backend;
         }
 
@@ -57,9 +59,7 @@
 
             var activeSagaInstance = context.Extensions.Get<ActiveSagaInstance>();
 
-            // TODO: HOW?? Internalize Json??
-            var sagaStateString = string.Empty;
-            // var sagaStateString = Serializer.Serialize(saga.Entity);
+            var sagaStateString = serializer.Serialize(saga.Entity);
 
             var messageType = context.MessageMetadata.MessageType.FullName;
             var headers = context.MessageHeaders;

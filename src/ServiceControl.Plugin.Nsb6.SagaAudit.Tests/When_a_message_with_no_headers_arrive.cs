@@ -5,12 +5,12 @@
     using NUnit.Framework;
     using Plugin.SagaAudit;
 
-    public class When_a_message_with_no_headers_arrive 
+    public class When_a_message_with_no_headers_arrive
     {
         [Test]
         public void Saga_state_change_message_can_be_created()
         {
-            var behavior = new CaptureSagaStateBehavior(null, null);
+            var behavior = new CaptureSagaStateBehavior(null, null, null);
             var headers = new Dictionary<string, string>();
             var messageId = Guid.NewGuid().ToString();
             var messageType = "SomeMessage";
