@@ -1,4 +1,4 @@
-﻿namespace ServiceControl.Plugin.Nsb6.CustomChecks.AcceptanceTests
+﻿namespace ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests
 {
     using System;
     using System.Configuration;
@@ -8,6 +8,7 @@
     using NServiceBus.AcceptanceTesting;
     using NServiceBus.AcceptanceTests;
     using NServiceBus.AcceptanceTests.EndpointTemplates;
+    using NServiceBus.Features;
     using NUnit.Framework;
 
     public class When_saga_changes_state : NServiceBusAcceptanceTest
@@ -16,11 +17,15 @@
         public async Task Should_send_result_to_service_control()
         {
             var context = await Scenario.Define<Context>(c => { c.Id = Guid.NewGuid(); })
+                .WithEndpoint<Sender>(b => b.When(session => session.SendLocal(new StartSaga
+                {
+                    DataId = Guid.NewGuid()
+                })))
                 .WithEndpoint<FakeServiceControl>()
-                .WithEndpoint<Sender>()
                 .Done(c => c.WasCalled && c.TimeoutReceived)
                 .Run();
 
+            Assert.True(context.TimeoutReceived);
             Assert.True(context.WasCalled);
 
             // TODO: Add more asserts
@@ -33,16 +38,17 @@
             public bool TimeoutReceived { get; set; }
 
             public Guid Id { get; set; }
+            public bool WasStarted { get; set; }
         }
 
-        class Sender : EndpointConfigurationBuilder
+        public class Sender : EndpointConfigurationBuilder
         {
             public Sender()
             {
                 var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
                 ConfigurationManager.AppSettings[@"ServiceControl/Queue"] = receiverEndpoint;
 
-                EndpointSetup<DefaultServer>();
+                EndpointSetup<DefaultServer>(config => config.EnableFeature<TimeoutManager>());
             }
 
             public class MySaga : Saga<MySaga.MySagaData>,
@@ -53,7 +59,10 @@
 
                 public Task Handle(StartSaga message, IMessageHandlerContext context)
                 {
+                    TestContext.WasStarted = true;
                     Data.DataId = message.DataId;
+
+                    Console.WriteLine("Handled");
 
                     return RequestTimeout(context, TimeSpan.FromMilliseconds(1), new TimeHasPassed());
                 }

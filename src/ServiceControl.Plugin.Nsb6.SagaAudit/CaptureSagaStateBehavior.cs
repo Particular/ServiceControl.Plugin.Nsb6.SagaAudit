@@ -6,16 +6,17 @@
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.Pipeline;
+    using NServiceBus.Routing;
     using NServiceBus.Sagas;
 
     class CaptureSagaStateBehavior : Behavior<IInvokeHandlerContext>
     {
         SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
-        string endpointName;
+        EndpointName endpointName;
         readonly CaptureSagaStateSerializer serializer;
 
-        public CaptureSagaStateBehavior(string endpointName, CaptureSagaStateSerializer serializer, ServiceControlBackend backend)
+        public CaptureSagaStateBehavior(EndpointName endpointName, CaptureSagaStateSerializer serializer, ServiceControlBackend backend)
         {
             this.endpointName = endpointName;
             this.serializer = serializer;
@@ -32,9 +33,9 @@
             }
 
             sagaAudit = new SagaUpdatedMessage
-                {
-                    StartTime = DateTime.UtcNow
-                };
+            {
+                StartTime = DateTime.UtcNow
+            };
             context.Extensions.Set(sagaAudit);
 
             await next().ConfigureAwait(false);
@@ -67,7 +68,7 @@
             sagaAudit.Initiator = BuildSagaChangeInitatorMessage(headers, messageId, messageType);
             sagaAudit.IsNew = activeSagaInstance.IsNew;
             sagaAudit.IsCompleted = saga.Completed;
-            sagaAudit.Endpoint = endpointName;
+            sagaAudit.Endpoint = endpointName.ToString();
             sagaAudit.SagaId = saga.Entity.Id;
             sagaAudit.SagaType = saga.GetType().FullName;
             sagaAudit.SagaState = sagaStateString;
@@ -76,7 +77,7 @@
             return backend.Send(sagaAudit);
         }
 
-        public SagaChangeInitiator BuildSagaChangeInitatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType )
+        public SagaChangeInitiator BuildSagaChangeInitatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType)
         {
 
             string originatingMachine;
@@ -97,15 +98,15 @@
             var isTimeoutMessage = headers.TryGetValue(Headers.IsSagaTimeoutMessage, out isTimeout) && isTimeout.ToLowerInvariant() == "true";
 
             return new SagaChangeInitiator
-                {
-                    IsSagaTimeoutMessage = isTimeoutMessage,
-                    InitiatingMessageId = messageId,
-                    OriginatingMachine = originatingMachine,
-                    OriginatingEndpoint = originatingEndpoint,
-                    MessageType = messageType,
-                    TimeSent = timeSentConveredToUtc,
-                    Intent = intent
-                };
+            {
+                IsSagaTimeoutMessage = isTimeoutMessage,
+                InitiatingMessageId = messageId,
+                OriginatingMachine = originatingMachine,
+                OriginatingEndpoint = originatingEndpoint,
+                MessageType = messageType,
+                TimeSent = timeSentConveredToUtc,
+                Intent = intent
+            };
         }
 
         void AssignSagaStateChangeCausedByMessage(IInvokeHandlerContext context)
@@ -135,6 +136,5 @@
 
             context.Headers["ServiceControl.SagaStateChange"] = sagaStateChange;
         }
-
     }
 }
