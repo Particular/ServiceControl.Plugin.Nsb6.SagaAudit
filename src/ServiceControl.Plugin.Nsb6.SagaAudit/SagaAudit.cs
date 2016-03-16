@@ -23,7 +23,6 @@
             context.Pipeline.Register<CaptureSagaStateRegistration>();
             context.Pipeline.Register<CaptureSagaResultingMessageRegistration>();
 
-            context.Container.RegisterSingleton(BuildSerializer(context.Settings));
             context.Container.ConfigureComponent(b => new CaptureSagaStateBehavior(context.Settings.EndpointName(), BuildSerializer(context.Settings), b.Build<ServiceControlBackend>()), DependencyLifecycle.SingleInstance);
         }
 
