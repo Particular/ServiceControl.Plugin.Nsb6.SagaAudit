@@ -51,12 +51,7 @@
 
         Task AuditSaga(Saga saga, IInvokeHandlerContext context)
         {
-            string messageId;
-
-            if (!context.MessageHeaders.TryGetValue(Headers.MessageId, out messageId))
-            {
-                return Task.FromResult(0);
-            }
+            var messageId = context.MessageId;
 
             var activeSagaInstance = context.Extensions.Get<ActiveSagaInstance>();
 
