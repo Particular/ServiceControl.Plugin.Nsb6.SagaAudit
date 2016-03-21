@@ -45,6 +45,11 @@
                 doNotDeliverBefore = notDeliverBefore.At;
             }
 
+            if (!context.Headers.ContainsKey(Headers.TimeSent))
+            {
+                context.Headers[Headers.TimeSent] = DateTimeExtensions.ToWireFormattedString(DateTime.UtcNow);
+            }
+
             var sagaResultingMessage = new SagaChangeOutput
             {
                 ResultingMessageId = context.MessageId,
