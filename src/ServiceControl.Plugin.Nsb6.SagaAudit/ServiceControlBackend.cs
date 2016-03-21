@@ -3,41 +3,29 @@
     using System;
     using System.Collections.Generic;
     using System.Configuration;
-    using System.Globalization;
-    using System.IO;
     using System.Net;
-    using System.Reflection;
     using System.Text;
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.Config;
     using NServiceBus.Extensibility;
-    using NServiceBus.MessageInterfaces;
-    using NServiceBus.MessageInterfaces.MessageMapper.Reflection;
     using NServiceBus.Performance.TimeToBeReceived;
     using NServiceBus.Routing;
-    using NServiceBus.Serialization;
     using NServiceBus.Settings;
     using NServiceBus.Support;
     using NServiceBus.Transports;
     using NServiceBus.Unicast.Transport;
+    using SagaAudit;
 
     class ServiceControlBackend
     {
-        public ServiceControlBackend(IDispatchMessages messageSender, ReadOnlySettings settings, CriticalError criticalError)
+        public ServiceControlBackend(IDispatchMessages messageSender, SagaAuditSerializer serializer, ReadOnlySettings settings, CriticalError criticalError)
         {
             this.settings = settings;
             this.criticalError = criticalError;
             this.messageSender = messageSender;
-
-            var type = Type.GetType("NServiceBus.JsonMessageSerializer, NServiceBus.Core", true);
-            IMessageMapper messageMapper = new MessageMapper();
-
-            serializer = (IMessageSerializer)Activator.CreateInstance(type, BindingFlags.Default, null, new object[]
-            {
-                messageMapper
-            }, CultureInfo.CurrentCulture);
+            this.serializer = serializer;
 
             serviceControlBackendAddress = GetServiceControlAddress();
 
@@ -55,15 +43,9 @@
         {
             // result.Apply(settings);
 
-            byte[] body;
-            using (var stream = new MemoryStream())
-            {
-                var resultAsObject = new object[] { result };
-                serializer.Serialize(resultAsObject, stream);
-                body = stream.ToArray();
-            }
+            var bodyString = serializer.Serialize(result);
 
-            body = ReplaceTypeToken(body);
+            var body = ReplaceTypeToken(bodyString);
 
             var headers = new Dictionary<string, string>();
             headers[Headers.EnclosedMessageTypes] = result.GetType().FullName;
@@ -84,10 +66,8 @@
             }
         }
 
-        static byte[] ReplaceTypeToken(byte[] body)
+        static byte[] ReplaceTypeToken(string bodyString)
         {
-            var bodyString = Encoding.UTF8.GetString(body);
-
             var toReplace = ", " + typeof(SagaUpdatedMessage).Assembly.GetName().Name;
 
             bodyString = bodyString.Replace(toReplace, ", ServiceControl");
@@ -159,9 +139,9 @@
         {
             try
             {
-                // In order to verify if the queue exists, we are sending a control message to SC. 
+                // In order to verify if the queue exists, we are sending a control message to SC.
                 // If we are unable to send a message because the queue doesn't exist, then we can fail fast.
-                // We currently don't have a way to check if Queue exists in a transport agnostic way, 
+                // We currently don't have a way to check if Queue exists in a transport agnostic way,
                 // hence the send.
                 var outgoingMessage = ControlMessageFactory.Create(MessageIntentEnum.Send);
                 outgoingMessage.Headers[Headers.ReplyToAddress] = settings.LocalAddress();
@@ -206,7 +186,7 @@
         CriticalError criticalError;
         IDispatchMessages messageSender;
 
-        IMessageSerializer serializer;
+        SagaAuditSerializer serializer;
         string serviceControlBackendAddress;
         ReadOnlySettings settings;
     }

@@ -8,17 +8,18 @@
     using NServiceBus.Pipeline;
     using NServiceBus.Routing;
     using NServiceBus.Sagas;
+    using NServiceBus.Settings;
 
     class CaptureSagaStateBehavior : Behavior<IIncomingLogicalMessageContext>
     {
         SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
         EndpointName endpointName;
-        readonly CaptureSagaStateSerializer serializer;
+        readonly SagaAuditSerializer serializer;
 
-        public CaptureSagaStateBehavior(EndpointName endpointName, CaptureSagaStateSerializer serializer, ServiceControlBackend backend)
+        public CaptureSagaStateBehavior(ReadOnlySettings settings, SagaAuditSerializer serializer, ServiceControlBackend backend)
         {
-            this.endpointName = endpointName;
+            this.endpointName = settings.EndpointName();
             this.serializer = serializer;
             this.backend = backend;
         }
