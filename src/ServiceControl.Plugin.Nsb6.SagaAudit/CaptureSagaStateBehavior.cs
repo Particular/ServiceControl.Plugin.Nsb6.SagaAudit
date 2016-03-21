@@ -27,9 +27,18 @@
         {
             var saga = context.MessageHandler.Instance as Saga;
 
+            BeginSagaAudit(saga, context);
+
+            await next().ConfigureAwait(false);
+
+            await EndSagaAudit(saga, context).ConfigureAwait(false);
+        }
+
+        private void BeginSagaAudit(Saga saga, IInvokeHandlerContext context)
+        {
             if (saga == null)
             {
-                await next().ConfigureAwait(false);
+                return;
             }
 
             sagaAudit = new SagaUpdatedMessage
@@ -37,16 +46,17 @@
                 StartTime = DateTime.UtcNow
             };
             context.Extensions.Set(sagaAudit);
+        }
 
-            await next().ConfigureAwait(false);
-
-            if (saga.Entity == null)
+        private Task EndSagaAudit(Saga saga, IInvokeHandlerContext context)
+        {
+            if (saga?.Entity == null)
             {
-                return; // Message was not handled by the saga
+                return Task.FromResult(0);
             }
 
             sagaAudit.FinishTime = DateTime.UtcNow;
-            await AuditSaga(saga, context).ConfigureAwait(false);
+            return AuditSaga(saga, context);
         }
 
         Task AuditSaga(Saga saga, IInvokeHandlerContext context)
