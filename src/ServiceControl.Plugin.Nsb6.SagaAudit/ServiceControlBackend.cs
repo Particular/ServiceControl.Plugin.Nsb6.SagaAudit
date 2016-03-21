@@ -3,18 +3,21 @@
     using System;
     using System.Collections.Generic;
     using System.Configuration;
+    using System.Globalization;
     using System.IO;
     using System.Net;
-    using System.Runtime.Serialization;
-    using System.Runtime.Serialization.Json;
+    using System.Reflection;
     using System.Text;
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.Config;
     using NServiceBus.Extensibility;
+    using NServiceBus.MessageInterfaces;
+    using NServiceBus.MessageInterfaces.MessageMapper.Reflection;
     using NServiceBus.Performance.TimeToBeReceived;
     using NServiceBus.Routing;
+    using NServiceBus.Serialization;
     using NServiceBus.Settings;
     using NServiceBus.Support;
     using NServiceBus.Transports;
@@ -27,11 +30,14 @@
             this.settings = settings;
             this.criticalError = criticalError;
             this.messageSender = messageSender;
-            serializer = new DataContractJsonSerializer(typeof(SagaUpdatedMessage), new DataContractJsonSerializerSettings
+
+            var type = Type.GetType("NServiceBus.JsonMessageSerializer, NServiceBus.Core", true);
+            IMessageMapper messageMapper = new MessageMapper();
+
+            serializer = (IMessageSerializer)Activator.CreateInstance(type, BindingFlags.Default, null, new object[]
             {
-                DateTimeFormat = new DateTimeFormat("o"),
-                EmitTypeInformation = EmitTypeInformation.Always,
-            });
+                messageMapper
+            }, CultureInfo.CurrentCulture);
 
             serviceControlBackendAddress = GetServiceControlAddress();
 
@@ -53,7 +59,7 @@
             using (var stream = new MemoryStream())
             {
                 var resultAsObject = new object[] { result };
-                serializer.WriteObject(stream, resultAsObject);
+                serializer.Serialize(resultAsObject, stream);
                 body = stream.ToArray();
             }
 
@@ -82,9 +88,9 @@
         {
             var bodyString = Encoding.UTF8.GetString(body);
 
-            var toReplace = "\"__type\":\"ReportCustomCheckResult:#ServiceControl.EndpointPlugin.Messages.SagaState\"";
+            var toReplace = ", " + typeof(SagaUpdatedMessage).Assembly.GetName().Name;
 
-            bodyString = bodyString.Replace(toReplace, "\"$type\":\"ServiceControl.EndpointPlugin.Messages.SagaState.ReportCustomCheckResult, ServiceControl\"");
+            bodyString = bodyString.Replace(toReplace, ", ServiceControl");
 
             return Encoding.UTF8.GetBytes(bodyString);
         }
@@ -200,7 +206,7 @@
         CriticalError criticalError;
         IDispatchMessages messageSender;
 
-        DataContractJsonSerializer serializer;
+        IMessageSerializer serializer;
         string serviceControlBackendAddress;
         ReadOnlySettings settings;
     }
