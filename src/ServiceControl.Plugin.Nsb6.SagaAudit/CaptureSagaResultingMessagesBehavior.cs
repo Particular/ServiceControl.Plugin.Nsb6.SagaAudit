@@ -48,7 +48,7 @@
             var sagaResultingMessage = new SagaChangeOutput
             {
                 ResultingMessageId = context.MessageId,
-                TimeSent = DateTimeExtensions.ToUtcDateTime(context.Headers[Headers.TimeSent]),
+                TimeSent = DateTime.UtcNow,
                 MessageType = logicalMessage.MessageType.ToString(),
                 DeliveryDelay = deliveryDelay,
                 DeliveryAt = doNotDeliverBefore,
