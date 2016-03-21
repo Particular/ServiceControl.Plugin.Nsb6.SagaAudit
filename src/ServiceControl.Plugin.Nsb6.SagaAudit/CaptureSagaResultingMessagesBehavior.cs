@@ -20,14 +20,17 @@
 
         void AppendMessageToState(IOutgoingLogicalMessageContext context)
         {
-            if (!context.Extensions.TryGet(out sagaUpdatedMessage))
-            {
-                return;
-            }
             var logicalMessage = context.Message;
             if (logicalMessage == null)
             {
                 //this can happen on control messages
+                return;
+            }
+
+            SagaUpdatedMessage sagaUpdatedMessage;
+
+            if (!context.Extensions.TryGet(out sagaUpdatedMessage))
+            {
                 return;
             }
 
@@ -62,8 +65,6 @@
             };
             sagaUpdatedMessage.ResultingMessages.Add(sagaResultingMessage);
         }
-
-        SagaUpdatedMessage sagaUpdatedMessage;
 
         static string GetDestinationForUnicastMessages(IOutgoingLogicalMessageContext context)
         {
