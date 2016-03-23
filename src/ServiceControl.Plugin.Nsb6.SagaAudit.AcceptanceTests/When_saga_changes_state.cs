@@ -1,7 +1,9 @@
 ﻿namespace ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests
 {
     using System;
+    using System.Collections.Generic;
     using System.Configuration;
+    using System.Linq;
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
@@ -16,29 +18,58 @@
         [Test]
         public async Task Should_send_result_to_service_control()
         {
-            var context = await Scenario.Define<Context>(c => { c.Id = Guid.NewGuid(); })
+            var contextId = Guid.NewGuid();
+            var context = await Scenario.Define<Context>(c => { c.Id = contextId; })
                 .WithEndpoint<Sender>(b => b.When(session => session.SendLocal(new StartSaga
                 {
-                    DataId = Guid.NewGuid()
+                    DataId = contextId
                 })))
                 .WithEndpoint<FakeServiceControl>()
-                .Done(c => c.WasCalled && c.TimeoutReceived)
+                .Done(c => c.MessagesReceived.Count == 2)
                 .Run();
 
+            //Process Asserts
+            Assert.True(context.WasStarted);
             Assert.True(context.TimeoutReceived);
-            Assert.True(context.WasCalled);
 
-            // TODO: Add more asserts
+            //SagaUpdateMessage Asserts
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().SagaState, "SagaState is not set");
+            Assert.AreNotEqual(context.MessagesReceived.First().SagaId, Guid.Empty, "SagaId is not set");
+            Assert.AreEqual(context.MessagesReceived.First().Endpoint, "SagaChangesState.Sender", "Endpoint name is not set or incorrect");
+            Assert.True(context.MessagesReceived.First().IsNew, "First message is not marked new");
+            Assert.False(context.MessagesReceived.Last().IsNew, "Last message is marked new");
+            Assert.False(context.MessagesReceived.First().IsCompleted, "First message is marked completed");
+            Assert.True(context.MessagesReceived.Last().IsCompleted, "Last Message is not marked completed");
+            Assert.Greater(context.MessagesReceived.First().StartTime, DateTime.MinValue, "StartTime is not set");
+            Assert.Greater(context.MessagesReceived.First().FinishTime, DateTime.MinValue, "FinishTime is not set");
+            Assert.AreEqual(context.MessagesReceived.First().SagaType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+Sender+MySaga", "SagaType is not set or incorrect");
+
+            //SagaUpdateMessage.Initiator Asserts
+            Assert.True(context.MessagesReceived.Last().Initiator.IsSagaTimeoutMessage, "Last message initiator is not a timeout");
+            Assert.IsNotNull(context.MessagesReceived.First().Initiator,"Initiator has not been set");
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
+            Assert.AreEqual(context.MessagesReceived.First().Initiator.MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+StartSaga", "First message initiator MessageType is incorrect");
+            Assert.IsNotNull(context.MessagesReceived.First().Initiator.TimeSent, "Initiator.TimeSent has not been set");
+
+            //SagaUpdateMessages.ResultingMessages Asserts
+            Assert.AreEqual(context.MessagesReceived.First().ResultingMessages.First().MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+Sender+MySaga+TimeHasPassed", "ResultingMessage.MessageType is not set or incorrect");
+            Assert.Greater(context.MessagesReceived.First().ResultingMessages.First().TimeSent, DateTime.MinValue, "ResultingMessage.TimeSent has not been set");
+            //Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().DeliveryAt, "ResultingMessage.DeliveryAt has not been set");
+            //Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().DeliveryDelay, "ResultingMessage.DeliveryDelay has not been set");
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
+            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
         }
 
         public class Context : ScenarioContext
         {
-            public bool WasCalled { get; set; }
-
-            public bool TimeoutReceived { get; set; }
-
             public Guid Id { get; set; }
+
+            internal List<SagaUpdatedMessage> MessagesReceived { get; } = new List<SagaUpdatedMessage>();
             public bool WasStarted { get; set; }
+            public bool TimeoutReceived { get; set; }
         }
 
         public class Sender : EndpointConfigurationBuilder
@@ -100,16 +131,21 @@
         {
             public FakeServiceControl()
             {
-                EndpointSetup<DefaultServer>(c => c.UseSerialization<JsonSerializer>());
+                IncludeType<SagaUpdatedMessage>();
+
+                EndpointSetup<DefaultServer>(c =>
+                {
+                    c.UseSerialization<JsonSerializer>();
+                });
             }
 
-            public class MyMessageHandler : IHandleMessages<SagaUpdatedMessage>
+            public class SagaUpdatedMessageHandler : IHandleMessages<SagaUpdatedMessage>
             {
                 public Context TestContext { get; set; }
 
                 public Task Handle(SagaUpdatedMessage message, IMessageHandlerContext context)
                 {
-                    TestContext.WasCalled = true;
+                    TestContext.MessagesReceived.Add(message);
                     return Task.FromResult(0);
                 }
             }
