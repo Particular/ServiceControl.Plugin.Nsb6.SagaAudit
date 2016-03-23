@@ -39,19 +39,19 @@
                             "\r\n", ex));
         }
 
-        public async Task Send(SagaUpdatedMessage result, TimeSpan timeToBeReceived)
+        async Task Send(object messageToSend, TimeSpan timeToBeReceived)
         {
-            // result.Apply(settings);
-
-            var bodyString = serializer.Serialize(result);
+            var bodyString = serializer.Serialize(messageToSend);
 
             var body = ReplaceTypeToken(bodyString);
 
-            var headers = new Dictionary<string, string>();
-            headers[Headers.EnclosedMessageTypes] = result.GetType().FullName;
-            headers[Headers.ContentType] = ContentTypes.Json; //Needed for ActiveMQ transport
-            headers[Headers.ReplyToAddress] = settings.LocalAddress();
-            headers[Headers.MessageIntent] = MessageIntentEnum.Send.ToString();
+            var headers = new Dictionary<string, string>
+            {
+                [Headers.EnclosedMessageTypes] = messageToSend.GetType().FullName,
+                [Headers.ContentType] = ContentTypes.Json, //Needed for ActiveMQ transport
+                [Headers.ReplyToAddress] = settings.LocalAddress(),
+                [Headers.MessageIntent] = MessageIntentEnum.Send.ToString()
+            };
 
             try
             {
