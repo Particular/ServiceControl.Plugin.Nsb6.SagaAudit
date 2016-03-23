@@ -3,9 +3,6 @@
     using System.Threading.Tasks;
     using NServiceBus;
     using NServiceBus.Features;
-    using NServiceBus.MessageInterfaces.MessageMapper.Reflection;
-    using NServiceBus.Settings;
-    using NServiceBus.Transports;
     using Plugin;
     using Plugin.SagaAudit;
 
@@ -24,7 +21,8 @@
             context.Container.ConfigureComponent<ServiceControlBackend>(DependencyLifecycle.SingleInstance);
             context.Container.ConfigureComponent<CaptureSagaStateBehavior>(DependencyLifecycle.SingleInstance);
 
-            context.Pipeline.Register("CaptureSagaState", b => b.Build<CaptureSagaStateBehavior>(), "Records saga state changes");
+            context.Pipeline.Register(new CaptureSagaStateBehavior.CaptureSagaStateRegistration());
+
             context.Pipeline.Register("ReportSagaStateChanges", new CaptureSagaResultingMessagesBehavior(), "Reports the saga state changes to ServiceControl");
 
             context.RegisterStartupTask(b => new SagaAuditStartupTask(b.Build<ServiceControlBackend>()));

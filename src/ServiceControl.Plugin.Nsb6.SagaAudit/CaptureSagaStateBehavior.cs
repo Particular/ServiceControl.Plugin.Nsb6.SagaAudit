@@ -10,7 +10,7 @@
     using NServiceBus.Sagas;
     using NServiceBus.Settings;
 
-    class CaptureSagaStateBehavior : Behavior<IIncomingLogicalMessageContext>
+    class CaptureSagaStateBehavior : Behavior<IInvokeHandlerContext>
     {
         SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
@@ -24,7 +24,16 @@
             this.backend = backend;
         }
 
-        public override async Task Invoke(IIncomingLogicalMessageContext context, Func<Task> next)
+        public class CaptureSagaStateRegistration : RegisterStep
+        {
+            public CaptureSagaStateRegistration()
+                : base("CaptureSagaState", typeof(CaptureSagaStateBehavior), "Records saga state changes")
+            {
+                InsertBefore(WellKnownStep.InvokeSaga);
+            }
+        }
+
+        public override async Task Invoke(IInvokeHandlerContext context, Func<Task> next)
         {
             sagaAudit = new SagaUpdatedMessage();
 
@@ -42,7 +51,7 @@
             await AuditSaga(activeSagaInstance, context).ConfigureAwait(false);
         }
 
-        Task AuditSaga(ActiveSagaInstance activeSagaInstance, IIncomingLogicalMessageContext context)
+        Task AuditSaga(ActiveSagaInstance activeSagaInstance, IInvokeHandlerContext context)
         {
             string messageId;
 
@@ -55,7 +64,7 @@
 
             var sagaStateString = serializer.Serialize(saga.Entity);
 
-            var messageType = context.Message.MessageType.FullName;
+            var messageType = context.MessageMetadata.MessageType.FullName;
             var headers = context.MessageHeaders;
 
             sagaAudit.StartTime = activeSagaInstance.Created;
@@ -104,7 +113,7 @@
             };
         }
 
-        void AssignSagaStateChangeCausedByMessage(IIncomingLogicalMessageContext context, ActiveSagaInstance sagaInstance)
+        void AssignSagaStateChangeCausedByMessage(IInvokeHandlerContext context, ActiveSagaInstance sagaInstance)
         {
             string sagaStateChange;
 
