@@ -1,7 +1,6 @@
 ﻿namespace ServiceControl.Plugin.SagaAudit
 {
     using System.IO;
-    using System.Text;
     using NServiceBus;
     using NServiceBus.MessageInterfaces.MessageMapper.Reflection;
     using NServiceBus.Serialization;
@@ -17,7 +16,7 @@
 
             var factory = definition.Configure(settings);
 
-            this.serializer = factory(new MessageMapper());
+            serializer = factory(new MessageMapper());
         }
 
         public string Serialize<T>(T entity)
@@ -29,7 +28,11 @@
                     entity
                 }, memoryStream);
 
-                return Encoding.UTF8.GetString(memoryStream.ToArray());
+                memoryStream.Position = 0;
+                using (var streamReader = new StreamReader(memoryStream))
+                {
+                    return streamReader.ReadToEnd();
+                }
             }
         }
     }
