@@ -19,7 +19,7 @@
 
         public CaptureSagaStateBehavior(ReadOnlySettings settings, SagaAuditSerializer serializer, ServiceControlBackend backend)
         {
-            this.endpointName = settings.EndpointName();
+            endpointName = settings.EndpointName();
             this.serializer = serializer;
             this.backend = backend;
         }
