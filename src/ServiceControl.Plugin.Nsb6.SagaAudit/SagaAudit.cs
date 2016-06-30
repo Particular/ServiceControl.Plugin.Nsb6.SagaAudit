@@ -1,10 +1,10 @@
 ﻿namespace ServiceControl.Features
 {
+    using System.Threading.Tasks;
     using NServiceBus;
     using NServiceBus.Features;
-    using NServiceBus.Pipeline;
+    using Plugin;
     using Plugin.SagaAudit;
-    using ServiceControl.Plugin;
 
     public class SagaAudit : Feature
     {
@@ -13,30 +13,37 @@
             EnableByDefault();
             DependsOn<Sagas>();
         }
-        
+
         protected override void Setup(FeatureConfigurationContext context)
         {
+            context.Container.ConfigureComponent<SagaAuditSerializer>(DependencyLifecycle.SingleInstance);
+
             context.Container.ConfigureComponent<ServiceControlBackend>(DependencyLifecycle.SingleInstance);
+            context.Container.ConfigureComponent<CaptureSagaStateBehavior>(DependencyLifecycle.SingleInstance);
 
-            context.Pipeline.Register<CaptureSagaStateRegistration>();
-            context.Pipeline.Register<CaptureSagaResultingMessageRegistration>();
+            context.Pipeline.Register(new CaptureSagaStateBehavior.CaptureSagaStateRegistration());
+
+            context.Pipeline.Register("ReportSagaStateChanges", new CaptureSagaResultingMessagesBehavior(), "Reports the saga state changes to ServiceControl");
+
+            context.RegisterStartupTask(b => new SagaAuditStartupTask(b.Build<ServiceControlBackend>()));
         }
 
-        class CaptureSagaStateRegistration : RegisterStep
+        class SagaAuditStartupTask : FeatureStartupTask
         {
-            public CaptureSagaStateRegistration()
-                : base("CaptureSagaState", typeof(CaptureSagaStateBehavior), "Records saga state changes")
+            ServiceControlBackend serviceControlBackend;
+            public SagaAuditStartupTask(ServiceControlBackend backend)
             {
-                InsertBefore(WellKnownStep.InvokeSaga);
+                serviceControlBackend = backend;
             }
-        }
 
-        class CaptureSagaResultingMessageRegistration : RegisterStep
-        {
-            public CaptureSagaResultingMessageRegistration()
-                : base("ReportSagaStateChanges", typeof(CaptureSagaResultingMessagesBehavior), "Reports the saga state changes to ServiceControl")
+            protected override Task OnStart(IMessageSession session)
             {
-                InsertAfter(WellKnownStep.InvokeSaga);
+                return serviceControlBackend.VerifyIfServiceControlQueueExists();
+            }
+
+            protected override Task OnStop(IMessageSession session)
+            {
+                return Task.FromResult(0);
             }
         }
     }

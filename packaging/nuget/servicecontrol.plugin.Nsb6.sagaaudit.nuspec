@@ -15,10 +15,10 @@
     <copyright>$copyright$</copyright>
     <tags>nservicebus servicebus msmq cqrs publish subscribe</tags>
     <dependencies>
-		<dependency id="NServiceBus" version="[6.0.0-unstable, 7.0.0)" />
+		<dependency id="NServiceBus" version="[6.0.0-beta, 7.0.0)" />
     </dependencies>
   </metadata>
   <files>
-    <file src="..\..\src\ServiceControl.Plugin.Nsb6.SagaAudit\bin\release\ServiceControl.Plugin.Nsb6.SagaAudit.*" target="lib\net45" />
+    <file src="..\..\src\ServiceControl.Plugin.Nsb6.SagaAudit\bin\release\ServiceControl.Plugin.Nsb6.SagaAudit.*" target="lib\net452" />
   </files>
 </package>

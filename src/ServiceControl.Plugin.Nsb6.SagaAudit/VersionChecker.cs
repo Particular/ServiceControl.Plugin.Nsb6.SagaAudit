@@ -3,7 +3,7 @@
     using NServiceBus;
     using System;
     using System.Diagnostics;
-        
+
     class VersionChecker
     {
         static VersionChecker()
@@ -14,7 +14,7 @@
                 fileVersion.FileBuildPart);
         }
 
-        public static Version CoreFileVersion { get; set; }
+        static Version CoreFileVersion { get; set; }
 
         public static bool CoreVersionIsAtLeast(int major, int minor)
         {
