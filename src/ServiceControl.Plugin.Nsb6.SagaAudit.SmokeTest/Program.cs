@@ -21,7 +21,7 @@ namespace ServiceControl.Plugin.Nsb6.SagaAudit.SmokeTest
 
             var builder = new ContainerBuilder();
 
-            var masters = new ConcurrentDictionary<Guid,bool>();
+            var masters = new ConcurrentDictionary<Guid, bool>();
             var cancellationSource = new CancellationTokenSource();
 
             builder.RegisterInstance(masters);
@@ -45,7 +45,7 @@ namespace ServiceControl.Plugin.Nsb6.SagaAudit.SmokeTest
                 for (var i = 1; i <= 10; i++)
                 {
                     var masterId = Guid.NewGuid();
-                    masters.TryAdd(masterId,false);
+                    masters.TryAdd(masterId, false);
                     Console.WriteLine($"Sending StartMaster for {masterId}");
                     await endpoint.SendLocal(new StartMaster
                     {
@@ -58,8 +58,10 @@ namespace ServiceControl.Plugin.Nsb6.SagaAudit.SmokeTest
                     try
                     {
                         await Task.Delay(2000, token);
-                    } catch (TaskCanceledException)
-                    { }
+                    }
+                    catch (TaskCanceledException)
+                    {
+                    }
                 } while (!token.IsCancellationRequested);
             }
             finally

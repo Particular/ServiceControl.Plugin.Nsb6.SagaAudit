@@ -29,7 +29,7 @@
             public CaptureSagaStateRegistration()
                 : base("CaptureSagaState", typeof(CaptureSagaStateBehavior), "Records saga state changes")
             {
-                InsertBefore(WellKnownStep.InvokeSaga);
+                InsertBefore("InvokeSaga");
             }
         }
 
@@ -69,7 +69,7 @@
 
             sagaAudit.StartTime = activeSagaInstance.Created;
             sagaAudit.FinishTime = activeSagaInstance.Modified;
-            sagaAudit.Initiator = BuildSagaChangeInitatorMessage(headers, messageId, messageType);
+            sagaAudit.Initiator = BuildSagaChangeInitiatorMessage(headers, messageId, messageType);
             sagaAudit.IsNew = activeSagaInstance.IsNew;
             sagaAudit.IsCompleted = saga.Completed;
             sagaAudit.Endpoint = endpointName.ToString();
@@ -81,9 +81,8 @@
             return backend.Send(sagaAudit);
         }
 
-        public SagaChangeInitiator BuildSagaChangeInitatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType)
+        public SagaChangeInitiator BuildSagaChangeInitiatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType)
         {
-
             string originatingMachine;
             headers.TryGetValue(Headers.OriginatingMachine, out originatingMachine);
 
@@ -91,7 +90,7 @@
             headers.TryGetValue(Headers.OriginatingEndpoint, out originatingEndpoint);
 
             string timeSent;
-            var timeSentConveredToUtc = headers.TryGetValue(Headers.TimeSent, out timeSent) ?
+            var timeSentConvertedToUtc = headers.TryGetValue(Headers.TimeSent, out timeSent) ?
                 DateTimeExtensions.ToUtcDateTime(timeSent) :
                 DateTime.MinValue;
 
@@ -108,7 +107,7 @@
                 OriginatingMachine = originatingMachine,
                 OriginatingEndpoint = originatingEndpoint,
                 MessageType = messageType,
-                TimeSent = timeSentConveredToUtc,
+                TimeSent = timeSentConvertedToUtc,
                 Intent = intent
             };
         }

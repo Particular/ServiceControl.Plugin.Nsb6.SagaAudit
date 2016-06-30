@@ -15,7 +15,6 @@
             settings.Set<NServiceBus.Routing.EndpointName>(new NServiceBus.Routing.EndpointName("NA"));
             var behavior = new CaptureSagaStateBehavior(settings, null, null);
 
-
             var headers = new Dictionary<string, string>
             {
                 {"NServiceBus.MessageId", "cf79765e-0123-45bf-a41b-a42d00a867c9"},
@@ -42,11 +41,13 @@
             var messageId = Guid.NewGuid().ToString();
             const string messageType = "Message1";
 
-            var message = behavior.BuildSagaChangeInitatorMessage(headers, messageId, messageType);
+            var message = behavior.BuildSagaChangeInitiatorMessage(headers, messageId, messageType);
 
             Assert.IsNotNull(message);
-            Assert.IsNotNullOrEmpty(message.OriginatingEndpoint);
-            Assert.IsNotNullOrEmpty(message.OriginatingMachine);
+            Assert.IsNotNull(message.OriginatingEndpoint);
+            Assert.IsNotEmpty(message.OriginatingEndpoint);
+            Assert.IsNotNull(message.OriginatingMachine);
+            Assert.IsNotEmpty(message.OriginatingMachine);
             Assert.IsTrue(message.IsSagaTimeoutMessage);
             Assert.AreNotEqual(DateTime.MinValue, message.TimeSent); // When SC can handle null TimeSent, then should be asserting to null, instead of checking for minValue
         }

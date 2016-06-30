@@ -19,6 +19,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="..\..\src\ServiceControl.Plugin.Nsb6.SagaAudit\bin\release\ServiceControl.Plugin.Nsb6.SagaAudit.*" target="lib\net45" />
+    <file src="..\..\src\ServiceControl.Plugin.Nsb6.SagaAudit\bin\release\ServiceControl.Plugin.Nsb6.SagaAudit.*" target="lib\net452" />
   </files>
 </package>

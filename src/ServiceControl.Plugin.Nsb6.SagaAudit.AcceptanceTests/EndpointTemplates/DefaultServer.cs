@@ -26,40 +26,40 @@
             this.typesToInclude = typesToInclude;
         }
 
-        public async Task<EndpointConfiguration> GetConfiguration(RunDescriptor runDescriptor, EndpointCustomizationConfiguration endpointConfiguration, IConfigurationSource configSource, Action<EndpointConfiguration> configurationBuilderCustomization)
+        public async Task<EndpointConfiguration> GetConfiguration(RunDescriptor runDescriptor, EndpointCustomizationConfiguration customizationConfiguration, IConfigurationSource configSource, Action<EndpointConfiguration> configurationBuilderCustomization)
         {
             var settings = runDescriptor.Settings;
 
-            var types = GetTypesScopedByTestClass(endpointConfiguration);
+            var types = GetTypesScopedByTestClass(customizationConfiguration);
 
             typesToInclude.AddRange(types);
 
-            var builder = new EndpointConfiguration(endpointConfiguration.EndpointName);
+            var endpointConfiguration = new EndpointConfiguration(customizationConfiguration.EndpointName);
 
-            builder.TypesToIncludeInScan(typesToInclude);
-            builder.CustomConfigurationSource(configSource);
-            builder.EnableInstallers();
+            endpointConfiguration.TypesToIncludeInScan(typesToInclude);
+            endpointConfiguration.CustomConfigurationSource(configSource);
+            endpointConfiguration.EnableInstallers();
 
-            builder.DisableFeature<TimeoutManager>();
-            builder.DisableFeature<SecondLevelRetries>();
-            builder.DisableFeature<FirstLevelRetries>();
+            endpointConfiguration.DisableFeature<TimeoutManager>();
+            endpointConfiguration.DisableFeature<SecondLevelRetries>();
+            endpointConfiguration.DisableFeature<FirstLevelRetries>();
 
-            await builder.DefineTransport(settings, endpointConfiguration.EndpointName).ConfigureAwait(false);
+            await endpointConfiguration.DefineTransport(settings, customizationConfiguration.EndpointName).ConfigureAwait(false);
 
-            builder.DefineBuilder(settings);
-            builder.RegisterComponents(r => { RegisterInheritanceHierarchyOfContextOnContainer(runDescriptor, r); });
+            endpointConfiguration.DefineBuilder(settings);
+            endpointConfiguration.RegisterComponents(r => { RegisterInheritanceHierarchyOfContextOnContainer(runDescriptor, r); });
 
             Type serializerType;
             if (settings.TryGet("Serializer", out serializerType))
             {
-                builder.UseSerialization((SerializationDefinition) Activator.CreateInstance(serializerType));
+                endpointConfiguration.UseSerialization((SerializationDefinition) Activator.CreateInstance(serializerType));
             }
-            await builder.DefinePersistence(settings, endpointConfiguration.EndpointName).ConfigureAwait(false);
+            await endpointConfiguration.DefinePersistence(settings, customizationConfiguration.EndpointName).ConfigureAwait(false);
 
-            builder.GetSettings().SetDefault("ScaleOut.UseSingleBrokerQueue", true);
-            configurationBuilderCustomization(builder);
+            endpointConfiguration.GetSettings().SetDefault("ScaleOut.UseSingleBrokerQueue", true);
+            configurationBuilderCustomization(endpointConfiguration);
 
-            return builder;
+            return endpointConfiguration;
         }
 
         static void RegisterInheritanceHierarchyOfContextOnContainer(RunDescriptor runDescriptor, IConfigureComponents r)

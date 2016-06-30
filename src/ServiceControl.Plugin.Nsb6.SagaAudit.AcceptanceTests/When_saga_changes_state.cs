@@ -33,7 +33,8 @@
             Assert.True(context.TimeoutReceived);
 
             //SagaUpdateMessage Asserts
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().SagaState, "SagaState is not set");
+            Assert.IsNotNull(context.MessagesReceived.First().SagaState, "SagaState is not set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().SagaState, "SagaState is not set");
             Assert.AreNotEqual(context.MessagesReceived.First().SagaId, Guid.Empty, "SagaId is not set");
             Assert.AreEqual(context.MessagesReceived.First().Endpoint, "SagaChangesState.Sender", "Endpoint name is not set or incorrect");
             Assert.True(context.MessagesReceived.First().IsNew, "First message is not marked new");
@@ -47,9 +48,12 @@
             //SagaUpdateMessage.Initiator Asserts
             Assert.True(context.MessagesReceived.Last().Initiator.IsSagaTimeoutMessage, "Last message initiator is not a timeout");
             Assert.IsNotNull(context.MessagesReceived.First().Initiator,"Initiator has not been set");
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
+            Assert.IsNotNull(context.MessagesReceived.First().Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
+            Assert.IsNotNull(context.MessagesReceived.First().Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
+            Assert.IsNotNull(context.MessagesReceived.First().Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
             Assert.AreEqual(context.MessagesReceived.First().Initiator.MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+StartSaga", "First message initiator MessageType is incorrect");
             Assert.IsNotNull(context.MessagesReceived.First().Initiator.TimeSent, "Initiator.TimeSent has not been set");
 
@@ -58,9 +62,12 @@
             Assert.Greater(context.MessagesReceived.First().ResultingMessages.First().TimeSent, DateTime.MinValue, "ResultingMessage.TimeSent has not been set");
             //Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().DeliveryAt, "ResultingMessage.DeliveryAt has not been set");
             //Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().DeliveryDelay, "ResultingMessage.DeliveryDelay has not been set");
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
-            Assert.IsNotNullOrEmpty(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
+            Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
+            Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
+            Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
+            Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
         }
 
         public class Context : ScenarioContext

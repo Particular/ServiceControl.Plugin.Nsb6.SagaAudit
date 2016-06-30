@@ -18,11 +18,11 @@
             var messageId = Guid.NewGuid().ToString();
             var messageType = "SomeMessage";
 
-            var message = behavior.BuildSagaChangeInitatorMessage(headers, messageId, messageType);
+            var message = behavior.BuildSagaChangeInitiatorMessage(headers, messageId, messageType);
 
             Assert.IsNotNull(message);
-            Assert.IsNullOrEmpty(message.OriginatingEndpoint);
-            Assert.IsNullOrEmpty(message.OriginatingMachine);
+            Assert.IsNull(message.OriginatingEndpoint);
+            Assert.IsNull(message.OriginatingMachine);
             Assert.IsFalse(message.IsSagaTimeoutMessage);
             Assert.AreEqual(DateTime.MinValue, message.TimeSent); // When SC can handle null TimeSent, then should be asserting to null, instead of checking for minValue
         }
