@@ -63,8 +63,9 @@
 
         static string GetDestinationForUnicastMessages(IOutgoingLogicalMessageContext context)
         {
-            var sendAddressTags = context.RoutingStrategies.OfType<UnicastRoutingStrategy>().Select(urs => urs.Apply(context.Headers)).Cast<UnicastAddressTag>().ToList();
-            return sendAddressTags.Count() != 1 ? null : sendAddressTags.First().Destination;
+            var sendAddressTags = context.RoutingStrategies.OfType<UnicastRoutingStrategy>()
+                .Select(urs => urs.Apply(context.Headers)).Cast<UnicastAddressTag>().ToList();
+            return sendAddressTags.Count != 1 ? null : sendAddressTags.First().Destination;
         }
     }
 }
