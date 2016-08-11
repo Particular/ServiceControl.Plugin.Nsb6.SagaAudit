@@ -41,8 +41,8 @@
             endpointConfiguration.EnableInstallers();
 
             endpointConfiguration.DisableFeature<TimeoutManager>();
-            endpointConfiguration.DisableFeature<SecondLevelRetries>();
-            endpointConfiguration.DisableFeature<FirstLevelRetries>();
+            endpointConfiguration.Recoverability().Delayed(cfg => cfg.NumberOfRetries(0));
+            endpointConfiguration.Recoverability().Immediate(cfg => cfg.NumberOfRetries(0));
 
             await endpointConfiguration.DefineTransport(settings, customizationConfiguration.EndpointName).ConfigureAwait(false);
 

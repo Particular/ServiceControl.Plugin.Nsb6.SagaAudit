@@ -8,13 +8,13 @@
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
-    using NServiceBus.Config;
+    using NServiceBus.DeliveryConstraints;
     using NServiceBus.Extensibility;
     using NServiceBus.Performance.TimeToBeReceived;
     using NServiceBus.Routing;
     using NServiceBus.Settings;
     using NServiceBus.Support;
-    using NServiceBus.Transports;
+    using NServiceBus.Transport;
     using NServiceBus.Unicast.Transport;
     using SagaAudit;
 
@@ -39,7 +39,7 @@
                             "\r\n", ex));
         }
 
-        async Task Send(object messageToSend, TimeSpan timeToBeReceived)
+        async Task Send(object messageToSend, TimeSpan timeToBeReceived, TransportTransaction transportTransaction)
         {
             var bodyString = serializer.Serialize(messageToSend);
 
@@ -56,8 +56,8 @@
             try
             {
                 var outgoingMessage = new OutgoingMessage(Guid.NewGuid().ToString(), headers, body);
-                var operation = new TransportOperation(outgoingMessage, new UnicastAddressTag(serviceControlBackendAddress), deliveryConstraints: new[] { new DiscardIfNotReceivedBefore(timeToBeReceived) });
-                await messageSender.Dispatch(new TransportOperations(operation), new ContextBag()).ConfigureAwait(false);
+                var operation = new TransportOperation(outgoingMessage, new UnicastAddressTag(serviceControlBackendAddress), deliveryConstraints: new List<DeliveryConstraint> { new DiscardIfNotReceivedBefore(timeToBeReceived) });
+                await messageSender.Dispatch(new TransportOperations(operation), transportTransaction, new ContextBag()).ConfigureAwait(false);
                 circuitBreaker.Success();
             }
             catch (Exception ex)
@@ -75,9 +75,9 @@
             return Encoding.UTF8.GetBytes(bodyString);
         }
 
-        public Task Send(SagaUpdatedMessage messageToSend)
+        public Task Send(SagaUpdatedMessage messageToSend, TransportTransaction transportTransaction)
         {
-            return Send(messageToSend, TimeSpan.MaxValue);
+            return Send(messageToSend, TimeSpan.MaxValue, transportTransaction);
         }
 
         string GetServiceControlAddress()
@@ -92,47 +92,31 @@
             if (TryGetErrorQueueAddress(out errorAddress))
             {
                 var qm = Parse(errorAddress);
-                return "Particular.ServiceControl"+ "@" + qm.Item2;
+                return "Particular.ServiceControl" + "@" + qm.Item2;
             }
 
-            if (VersionChecker.CoreVersionIsAtLeast(4, 1))
+            string auditAddress;
+            if (settings.TryGetAuditQueueAddress(out auditAddress))
             {
-                //audit config was added in 4.1
-                string address;
-                if (TryGetAuditAddress(out address))
-                {
-                    var qm = Parse(errorAddress);
-                    return "Particular.ServiceControl" + "@" + qm.Item2;
-                }
+                var qm = Parse(auditAddress);
+                return "Particular.ServiceControl" + "@" + qm.Item2;
             }
 
             return null;
         }
 
-
         bool TryGetErrorQueueAddress(out string address)
         {
-            var faultsForwarderConfig = settings.GetConfigSection<MessageForwardingInCaseOfFaultConfig>();
-            if (!string.IsNullOrEmpty(faultsForwarderConfig?.ErrorQueue))
+            try
             {
-                address = faultsForwarderConfig.ErrorQueue;
+                address = settings.ErrorQueueAddress();
                 return true;
             }
-            address = null;
-            return false;
-        }
-
-        bool TryGetAuditAddress(out string address)
-        {
-            var auditConfig = settings.GetConfigSection<AuditConfig>();
-            if (!string.IsNullOrEmpty(auditConfig?.QueueName))
+            catch
             {
-                address = auditConfig.QueueName;
-                return true;
+                address = null;
+                return false;
             }
-            address = null;
-
-            return false;
         }
 
         public async Task VerifyIfServiceControlQueueExists()
@@ -146,7 +130,7 @@
                 var outgoingMessage = ControlMessageFactory.Create(MessageIntentEnum.Send);
                 outgoingMessage.Headers[Headers.ReplyToAddress] = settings.LocalAddress();
                 var operation = new TransportOperation(outgoingMessage, new UnicastAddressTag(serviceControlBackendAddress));
-                await messageSender.Dispatch(new TransportOperations(operation), new ContextBag()).ConfigureAwait(false);
+                await messageSender.Dispatch(new TransportOperations(operation), new TransportTransaction(), new ContextBag()).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

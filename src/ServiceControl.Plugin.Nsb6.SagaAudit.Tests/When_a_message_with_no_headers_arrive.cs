@@ -12,7 +12,7 @@
         public void Saga_state_change_message_can_be_created()
         {
             var settings = new SettingsHolder();
-            settings.Set<NServiceBus.Routing.EndpointName>(new NServiceBus.Routing.EndpointName("NA"));
+            settings.Set("NServiceBus.Routing.EndpointName", "NA");
             var behavior = new CaptureSagaStateBehavior(settings, null, null);
             var headers = new Dictionary<string, string>();
             var messageId = Guid.NewGuid().ToString();

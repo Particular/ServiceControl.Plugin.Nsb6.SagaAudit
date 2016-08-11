@@ -6,15 +6,15 @@
     using EndpointPlugin.Messages.SagaState;
     using NServiceBus;
     using NServiceBus.Pipeline;
-    using NServiceBus.Routing;
     using NServiceBus.Sagas;
     using NServiceBus.Settings;
+    using NServiceBus.Transport;
 
     class CaptureSagaStateBehavior : Behavior<IInvokeHandlerContext>
     {
         SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
-        EndpointName endpointName;
+        string endpointName;
         readonly SagaAuditSerializer serializer;
 
         public CaptureSagaStateBehavior(ReadOnlySettings settings, SagaAuditSerializer serializer, ServiceControlBackend backend)
@@ -72,13 +72,15 @@
             sagaAudit.Initiator = BuildSagaChangeInitiatorMessage(headers, messageId, messageType);
             sagaAudit.IsNew = activeSagaInstance.IsNew;
             sagaAudit.IsCompleted = saga.Completed;
-            sagaAudit.Endpoint = endpointName.ToString();
+            sagaAudit.Endpoint = endpointName;
             sagaAudit.SagaId = saga.Entity.Id;
             sagaAudit.SagaType = saga.GetType().FullName;
             sagaAudit.SagaState = sagaStateString;
 
             AssignSagaStateChangeCausedByMessage(context, activeSagaInstance);
-            return backend.Send(sagaAudit);
+
+            var transportTransaction = context.Extensions.Get<TransportTransaction>();
+            return backend.Send(sagaAudit, transportTransaction);
         }
 
         public SagaChangeInitiator BuildSagaChangeInitiatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType)

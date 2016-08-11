@@ -21,10 +21,15 @@
             var contextId = Guid.NewGuid();
             var context = await Scenario.Define<Context>(c => { c.Id = contextId; })
                 .WithEndpoint<FakeServiceControl>()
-                .WithEndpoint<Sender>(b => b.When(session => session.SendLocal(new StartSaga
+                .WithEndpoint<Sender>(b => b.When(session =>
                 {
-                    DataId = contextId
-                })))
+                    var sendOptions = new SendOptions();
+                    sendOptions.RouteToThisEndpoint();
+                    return session.Send(new StartSaga
+                    {
+                        DataId = contextId
+                    }, sendOptions);
+                }))
                 .Done(c => c.MessagesReceived.Count == 2)
                 .Run();
 
