@@ -75,7 +75,7 @@
             Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
         }
 
-        public class Context : ScenarioContext
+        class Context : ScenarioContext
         {
             public Guid Id { get; set; }
 
@@ -84,7 +84,7 @@
             public bool TimeoutReceived { get; set; }
         }
 
-        public class Sender : EndpointConfigurationBuilder
+        class Sender : EndpointConfigurationBuilder
         {
             public Sender()
             {
@@ -134,11 +134,6 @@
             }
         }
 
-        public class StartSaga : IMessage
-        {
-            public Guid DataId { get; set; }
-        }
-
         class FakeServiceControl : EndpointConfigurationBuilder
         {
             public FakeServiceControl()
@@ -161,6 +156,11 @@
                     return Task.FromResult(0);
                 }
             }
+        }
+
+        public class StartSaga : IMessage
+        {
+            public Guid DataId { get; set; }
         }
     }
 }
