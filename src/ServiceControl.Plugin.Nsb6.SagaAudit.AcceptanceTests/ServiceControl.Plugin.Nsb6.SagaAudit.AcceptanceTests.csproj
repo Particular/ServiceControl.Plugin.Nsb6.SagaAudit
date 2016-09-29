@@ -60,6 +60,7 @@
     <Compile Include="SagaChangeOutput.cs" />
     <Compile Include="SagaUpdatedMessage.cs" />
     <Compile Include="ScenarioDescriptors\EnvironmentHelper.cs" />
+    <Compile Include="When_a_message_is_handled_by_a_saga.cs" />
     <Compile Include="When_saga_changes_state.cs" />
     <Compile Include="EndpointTemplates\ConfigureExtensions.cs" />
     <Compile Include="EndpointTemplates\DefaultServer.cs" />
