@@ -12,10 +12,9 @@
 
     class CaptureSagaStateBehavior : Behavior<IInvokeHandlerContext>
     {
-        SagaUpdatedMessage sagaAudit;
         ServiceControlBackend backend;
         string endpointName;
-        readonly SagaAuditSerializer serializer;
+        SagaAuditSerializer serializer;
 
         public CaptureSagaStateBehavior(ReadOnlySettings settings, SagaAuditSerializer serializer, ServiceControlBackend backend)
         {
@@ -35,7 +34,7 @@
 
         public override async Task Invoke(IInvokeHandlerContext context, Func<Task> next)
         {
-            sagaAudit = new SagaUpdatedMessage();
+            var sagaAudit = new SagaUpdatedMessage();
 
             context.Extensions.Set(sagaAudit);
 
@@ -48,10 +47,10 @@
                 return; // Message was not handled by the saga
             }
 
-            await AuditSaga(activeSagaInstance, context).ConfigureAwait(false);
+            await AuditSaga(activeSagaInstance, sagaAudit, context).ConfigureAwait(false);
         }
 
-        Task AuditSaga(ActiveSagaInstance activeSagaInstance, IInvokeHandlerContext context)
+        Task AuditSaga(ActiveSagaInstance activeSagaInstance, SagaUpdatedMessage sagaAudit, IInvokeHandlerContext context)
         {
             string messageId;
 
@@ -77,13 +76,13 @@
             sagaAudit.SagaType = saga.GetType().FullName;
             sagaAudit.SagaState = sagaStateString;
 
-            AssignSagaStateChangeCausedByMessage(context, activeSagaInstance);
+            AssignSagaStateChangeCausedByMessage(context, activeSagaInstance, sagaAudit);
 
             var transportTransaction = context.Extensions.Get<TransportTransaction>();
             return backend.Send(sagaAudit, transportTransaction);
         }
 
-        public SagaChangeInitiator BuildSagaChangeInitiatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType)
+        public static SagaChangeInitiator BuildSagaChangeInitiatorMessage(IReadOnlyDictionary<string, string> headers, string messageId, string messageType)
         {
             string originatingMachine;
             headers.TryGetValue(Headers.OriginatingMachine, out originatingMachine);
@@ -114,7 +113,7 @@
             };
         }
 
-        void AssignSagaStateChangeCausedByMessage(IInvokeHandlerContext context, ActiveSagaInstance sagaInstance)
+        static void AssignSagaStateChangeCausedByMessage(IInvokeHandlerContext context, ActiveSagaInstance sagaInstance, SagaUpdatedMessage sagaAudit)
         {
             string sagaStateChange;
 
