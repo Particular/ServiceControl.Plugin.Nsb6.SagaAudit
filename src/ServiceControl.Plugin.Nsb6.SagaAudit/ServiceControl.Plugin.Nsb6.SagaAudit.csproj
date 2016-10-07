@@ -59,11 +59,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AuditInvokedSagaBehavior.cs" />
     <Compile Include="CaptureSagaResultingMessagesBehavior.cs" />
     <Compile Include="CaptureSagaStateBehavior.cs">
       <ItemGuid>be7306a9-93a4-490d-ac1a-8377f589cebe</ItemGuid>
     </Compile>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="SagaAuditHeaders.cs" />
     <Compile Include="SagaAuditSerializer.cs" />
     <Compile Include="Messages\SagaChangeInitiator.cs" />
     <Compile Include="Messages\SagaChangeOutput.cs" />

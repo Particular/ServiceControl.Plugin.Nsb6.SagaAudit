@@ -47,11 +47,14 @@ namespace ServiceControl.Plugin.Nsb6.SagaAudit.SmokeTest
                     var masterId = Guid.NewGuid();
                     masters.TryAdd(masterId, false);
                     Console.WriteLine($"Sending StartMaster for {masterId}");
-                    await endpoint.SendLocal(new StartMaster
+                    await Task.WhenAll(endpoint.SendLocal(new StartMasterAlpha
                     {
                         Identifier = masterId,
                         WorkRequired = i
-                    });
+                    }), endpoint.SendLocal(new StartMasterBeta
+                    {
+                        Identifier = masterId
+                    }));
                 }
                 do
                 {

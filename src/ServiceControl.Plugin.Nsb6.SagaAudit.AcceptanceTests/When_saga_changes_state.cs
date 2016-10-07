@@ -34,13 +34,16 @@
                 .Run();
 
             //Process Asserts
-            Assert.True(context.WasStarted);
-            Assert.True(context.TimeoutReceived);
+            Assert.AreNotEqual(Guid.Empty, context.SagaId, "Saga was not started");
+            Assert.True(context.TimeoutReceived, "Saga Timeout was not received");
 
             //SagaUpdateMessage Asserts
             Assert.IsNotNull(context.MessagesReceived.First().SagaState, "SagaState is not set");
             Assert.IsNotEmpty(context.MessagesReceived.First().SagaState, "SagaState is not set");
-            Assert.AreNotEqual(context.MessagesReceived.First().SagaId, Guid.Empty, "SagaId is not set");
+
+            Assert.IsTrue(context.MessagesReceived.All(m => m.SagaId != Guid.Empty), "Messages with empty SagaId received");
+            Assert.IsTrue(context.MessagesReceived.All(m => m.SagaId == context.SagaId), "Messages with incorrect SagaId received");
+
             Assert.AreEqual(context.MessagesReceived.First().Endpoint, "SagaChangesState.Sender", "Endpoint name is not set or incorrect");
             Assert.True(context.MessagesReceived.First().IsNew, "First message is not marked new");
             Assert.False(context.MessagesReceived.Last().IsNew, "Last message is marked new");
@@ -82,6 +85,7 @@
             internal List<SagaUpdatedMessage> MessagesReceived { get; } = new List<SagaUpdatedMessage>();
             public bool WasStarted { get; set; }
             public bool TimeoutReceived { get; set; }
+            public Guid SagaId { get; set; }
         }
 
         class Sender : EndpointConfigurationBuilder
@@ -104,7 +108,7 @@
                 {
                     TestContext.WasStarted = true;
                     Data.DataId = message.DataId;
-
+                    TestContext.SagaId = Data.Id;
                     Console.WriteLine("Handled");
 
                     return RequestTimeout(context, TimeSpan.FromMilliseconds(1), new TimeHasPassed());

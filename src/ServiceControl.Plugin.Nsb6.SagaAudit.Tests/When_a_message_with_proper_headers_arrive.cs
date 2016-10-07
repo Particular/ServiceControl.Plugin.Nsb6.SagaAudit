@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using NServiceBus.Settings;
     using NUnit.Framework;
     using Plugin.SagaAudit;
 
@@ -11,10 +10,6 @@
         [Test]
         public void Saga_state_change_message_can_be_created()
         {
-            var settings = new SettingsHolder();
-            settings.Set("NServiceBus.Routing.EndpointName", "NA");
-            var behavior = new CaptureSagaStateBehavior(settings, null, null);
-
             var headers = new Dictionary<string, string>
             {
                 {"NServiceBus.MessageId", "cf79765e-0123-45bf-a41b-a42d00a867c9"},
@@ -41,7 +36,7 @@
             var messageId = Guid.NewGuid().ToString();
             const string messageType = "Message1";
 
-            var message = behavior.BuildSagaChangeInitiatorMessage(headers, messageId, messageType);
+            var message = CaptureSagaStateBehavior.BuildSagaChangeInitiatorMessage(headers, messageId, messageType);
 
             Assert.IsNotNull(message);
             Assert.IsNotNull(message.OriginatingEndpoint);
