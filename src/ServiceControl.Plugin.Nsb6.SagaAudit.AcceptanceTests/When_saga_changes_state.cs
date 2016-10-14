@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Linq;
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
@@ -33,49 +32,54 @@
                 .Done(c => c.MessagesReceived.Count == 2)
                 .Run();
 
+            var firstSagaChange = context.MessagesReceived.FirstOrDefault(msg => msg?.Initiator?.MessageType == typeof(StartSaga).FullName);
+            var secondSagaChange = context.MessagesReceived.FirstOrDefault(msg => msg?.Initiator?.IsSagaTimeoutMessage ?? false);
+
             //Process Asserts
             Assert.AreNotEqual(Guid.Empty, context.SagaId, "Saga was not started");
             Assert.True(context.TimeoutReceived, "Saga Timeout was not received");
+            Assert.NotNull(firstSagaChange, "First Saga Change was not received");
+            Assert.NotNull(secondSagaChange, "Second Saga was not received");
 
             //SagaUpdateMessage Asserts
-            Assert.IsNotNull(context.MessagesReceived.First().SagaState, "SagaState is not set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().SagaState, "SagaState is not set");
+            Assert.IsNotNull(firstSagaChange.SagaState, "SagaState is not set");
+            Assert.IsNotEmpty(firstSagaChange.SagaState, "SagaState is not set");
 
             Assert.IsTrue(context.MessagesReceived.All(m => m.SagaId != Guid.Empty), "Messages with empty SagaId received");
             Assert.IsTrue(context.MessagesReceived.All(m => m.SagaId == context.SagaId), "Messages with incorrect SagaId received");
 
-            Assert.AreEqual(context.MessagesReceived.First().Endpoint, "SagaChangesState.Sender", "Endpoint name is not set or incorrect");
-            Assert.True(context.MessagesReceived.First().IsNew, "First message is not marked new");
-            Assert.False(context.MessagesReceived.Last().IsNew, "Last message is marked new");
-            Assert.False(context.MessagesReceived.First().IsCompleted, "First message is marked completed");
-            Assert.True(context.MessagesReceived.Last().IsCompleted, "Last Message is not marked completed");
-            Assert.Greater(context.MessagesReceived.First().StartTime, DateTime.MinValue, "StartTime is not set");
-            Assert.Greater(context.MessagesReceived.First().FinishTime, DateTime.MinValue, "FinishTime is not set");
-            Assert.AreEqual(context.MessagesReceived.First().SagaType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+Sender+MySaga", "SagaType is not set or incorrect");
+            Assert.AreEqual(firstSagaChange.Endpoint, "SagaChangesState.Sender", "Endpoint name is not set or incorrect");
+            Assert.True(firstSagaChange.IsNew, "First message is not marked new");
+            Assert.False(secondSagaChange.IsNew, "Last message is marked new");
+            Assert.False(firstSagaChange.IsCompleted, "First message is marked completed");
+            Assert.True(secondSagaChange.IsCompleted, "Last Message is not marked completed");
+            Assert.Greater(firstSagaChange.StartTime, DateTime.MinValue, "StartTime is not set");
+            Assert.Greater(firstSagaChange.FinishTime, DateTime.MinValue, "FinishTime is not set");
+            Assert.AreEqual(firstSagaChange.SagaType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+Sender+MySaga", "SagaType is not set or incorrect");
 
             //SagaUpdateMessage.Initiator Asserts
-            Assert.True(context.MessagesReceived.Last().Initiator.IsSagaTimeoutMessage, "Last message initiator is not a timeout");
-            Assert.IsNotNull(context.MessagesReceived.First().Initiator,"Initiator has not been set");
-            Assert.IsNotNull(context.MessagesReceived.First().Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
-            Assert.IsNotNull(context.MessagesReceived.First().Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
-            Assert.IsNotNull(context.MessagesReceived.First().Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
-            Assert.AreEqual(context.MessagesReceived.First().Initiator.MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+StartSaga", "First message initiator MessageType is incorrect");
-            Assert.IsNotNull(context.MessagesReceived.First().Initiator.TimeSent, "Initiator.TimeSent has not been set");
+            Assert.True(secondSagaChange.Initiator.IsSagaTimeoutMessage, "Last message initiator is not a timeout");
+            Assert.IsNotNull(firstSagaChange.Initiator,"Initiator has not been set");
+            Assert.IsNotNull(firstSagaChange.Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
+            Assert.IsNotEmpty(firstSagaChange.Initiator.InitiatingMessageId, "Initiator.InitiatingMessageId has not been set");
+            Assert.IsNotNull(firstSagaChange.Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
+            Assert.IsNotEmpty(firstSagaChange.Initiator.OriginatingMachine, "Initiator.OriginatingMachine has not been set");
+            Assert.IsNotNull(firstSagaChange.Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
+            Assert.IsNotEmpty(firstSagaChange.Initiator.OriginatingEndpoint, "Initiator.OriginatingEndpoint has not been set");
+            Assert.AreEqual(firstSagaChange.Initiator.MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+StartSaga", "First message initiator MessageType is incorrect");
+            Assert.IsNotNull(firstSagaChange.Initiator.TimeSent, "Initiator.TimeSent has not been set");
 
             //SagaUpdateMessages.ResultingMessages Asserts
-            Assert.AreEqual(context.MessagesReceived.First().ResultingMessages.First().MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+Sender+MySaga+TimeHasPassed", "ResultingMessage.MessageType is not set or incorrect");
-            Assert.Greater(context.MessagesReceived.First().ResultingMessages.First().TimeSent, DateTime.MinValue, "ResultingMessage.TimeSent has not been set");
-            //Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().DeliveryAt, "ResultingMessage.DeliveryAt has not been set");
-            //Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().DeliveryDelay, "ResultingMessage.DeliveryDelay has not been set");
-            Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
-            Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
-            Assert.IsNotNull(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
-            Assert.IsNotEmpty(context.MessagesReceived.First().ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
+            Assert.AreEqual(firstSagaChange.ResultingMessages.First().MessageType, "ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests.When_saga_changes_state+Sender+MySaga+TimeHasPassed", "ResultingMessage.MessageType is not set or incorrect");
+            Assert.Greater(firstSagaChange.ResultingMessages.First().TimeSent, DateTime.MinValue, "ResultingMessage.TimeSent has not been set");
+            //Assert.IsNotNull(firstSagaChange.ResultingMessages.First().DeliveryAt, "ResultingMessage.DeliveryAt has not been set");
+            //Assert.IsNotNull(firstSagaChange.ResultingMessages.First().DeliveryDelay, "ResultingMessage.DeliveryDelay has not been set");
+            Assert.IsNotNull(firstSagaChange.ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
+            Assert.IsNotEmpty(firstSagaChange.ResultingMessages.First().Destination, "ResultingMessage.Destination has not been set");
+            Assert.IsNotNull(firstSagaChange.ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
+            Assert.IsNotEmpty(firstSagaChange.ResultingMessages.First().ResultingMessageId, "ResultingMessage.ResultingMessageId has not been not set");
+            Assert.IsNotNull(firstSagaChange.ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
+            Assert.IsNotEmpty(firstSagaChange.ResultingMessages.First().Intent,"ResultingMessage.Intent has not been set");
         }
 
         class Context : ScenarioContext
@@ -92,10 +96,12 @@
         {
             public Sender()
             {
-                var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
-                ConfigurationManager.AppSettings[@"ServiceControl/Queue"] = receiverEndpoint;
-
-                EndpointSetup<DefaultServer>(config => config.EnableFeature<TimeoutManager>());
+                EndpointSetup<DefaultServer>(config =>
+                {
+                    var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
+                    config.SagaPlugin(receiverEndpoint);
+                    config.EnableFeature<TimeoutManager>();
+                });
             }
 
             public class MySaga : Saga<MySaga.MySagaData>,

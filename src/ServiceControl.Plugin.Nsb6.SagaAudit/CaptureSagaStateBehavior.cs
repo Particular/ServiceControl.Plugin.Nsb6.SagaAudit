@@ -47,6 +47,11 @@
                 return; // Message was not handled by the saga
             }
 
+            if (activeSagaInstance.Instance.Entity == null)
+            {
+                return; // Message was not handled by the saga
+            }
+
             await AuditSaga(activeSagaInstance, sagaAudit, context).ConfigureAwait(false);
         }
 

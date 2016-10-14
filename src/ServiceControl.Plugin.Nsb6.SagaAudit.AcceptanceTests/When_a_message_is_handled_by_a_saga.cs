@@ -74,10 +74,11 @@
         {
             public EndpointWithASaga()
             {
-                var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
-
                 EndpointSetup<DefaultServer>(c =>
                 {
+                    var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
+
+                    c.SagaPlugin(receiverEndpoint);
                     c.UseSerialization<JsonSerializer>();
                     c.AuditProcessedMessagesTo(receiverEndpoint);
                 });
@@ -118,7 +119,6 @@
                     mapper.ConfigureMapping<MessageToBeAuditedByMultiple>(msg => msg.Id).ToSaga(saga => saga.TestRunId);
                 }
 
-
                 public Task Handle(MessageToBeAuditedByMultiple message, IMessageHandlerContext context)
                 {
                     Data.TestRunId = message.Id;
@@ -148,6 +148,14 @@
                 {
                     c.UseSerialization<JsonSerializer>();
                 });
+            }
+
+            public class SagaUpdatedMessageHandler : IHandleMessages<SagaUpdatedMessage>
+            {
+                public Task Handle(SagaUpdatedMessage message, IMessageHandlerContext context)
+                {
+                    return Task.FromResult(0);
+                }
             }
 
             public class MessageToBeAuditedHandler : IHandleMessages<MessageToBeAudited>, IHandleMessages<MessageToBeAuditedByMultiple>

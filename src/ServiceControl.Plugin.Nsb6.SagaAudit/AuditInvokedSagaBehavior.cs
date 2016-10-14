@@ -18,6 +18,11 @@
                 return;
             }
 
+            if (activeSagaInstance.Instance.Entity == null)
+            {
+                return; // Message was not handled by the saga
+            }
+
             var invokedSagaAuditData = $"{activeSagaInstance.Instance.GetType().FullName}:{activeSagaInstance.Instance.Entity.Id}";
 
             string invokedSagasHeader;
