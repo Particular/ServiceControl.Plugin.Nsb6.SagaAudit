@@ -71,6 +71,7 @@
     <Compile Include="ScenarioDescriptors\Persistence.cs" />
     <Compile Include="ScenarioDescriptors\Serializers.cs" />
     <Compile Include="ScenarioDescriptors\Transports.cs" />
+    <Compile Include="When_saga_not_found.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">
