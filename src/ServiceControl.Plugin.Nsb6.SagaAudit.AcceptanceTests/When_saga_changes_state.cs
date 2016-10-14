@@ -97,10 +97,12 @@
         {
             public Sender()
             {
-                var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
-                ConfigurationManager.AppSettings[@"ServiceControl/Queue"] = receiverEndpoint;
-
-                EndpointSetup<DefaultServer>(config => config.EnableFeature<TimeoutManager>());
+                EndpointSetup<DefaultServer>(config =>
+                {
+                    var receiverEndpoint = NServiceBus.AcceptanceTesting.Customization.Conventions.EndpointNamingConvention(typeof(FakeServiceControl));
+                    config.SagaPlugin(receiverEndpoint);
+                    config.EnableFeature<TimeoutManager>();
+                });
             }
 
             public class MySaga : Saga<MySaga.MySagaData>,

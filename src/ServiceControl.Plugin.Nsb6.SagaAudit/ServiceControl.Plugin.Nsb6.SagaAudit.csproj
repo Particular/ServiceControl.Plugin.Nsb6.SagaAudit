@@ -72,6 +72,7 @@
     <Compile Include="Messages\SagaUpdatedMessage.cs" />
     <Compile Include="RepeatedFailuresOverTimeCircuitBreaker.cs" />
     <Compile Include="SagaAudit.cs" />
+    <Compile Include="SagaPluginExtensions.cs" />
     <Compile Include="ServiceControlBackend.cs" />
     <Compile Include="VersionChecker.cs" />
   </ItemGroup>

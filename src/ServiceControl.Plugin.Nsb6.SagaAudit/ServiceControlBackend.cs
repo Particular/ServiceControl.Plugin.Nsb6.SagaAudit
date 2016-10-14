@@ -83,6 +83,12 @@
         string GetServiceControlAddress()
         {
             var queueName = ConfigurationManager.AppSettings[@"ServiceControl/Queue"];
+
+            if (settings.HasSetting("ServiceControl.Url"))
+            {
+                queueName = settings.Get<string>("ServiceControl.Url");
+            }
+
             if (!string.IsNullOrEmpty(queueName))
             {
                 return queueName;
