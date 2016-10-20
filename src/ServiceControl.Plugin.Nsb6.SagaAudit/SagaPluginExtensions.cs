@@ -2,6 +2,9 @@
 {
     using Configuration.AdvanceExtensibility;
 
+    /// <summary>
+    /// Plugin extension methods.
+    /// </summary>
     public static class SagaPluginExtensions
     {
         /// <summary>
