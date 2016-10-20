@@ -33,6 +33,7 @@
         class SagaAuditStartupTask : FeatureStartupTask
         {
             ServiceControlBackend serviceControlBackend;
+
             public SagaAuditStartupTask(ServiceControlBackend backend)
             {
                 serviceControlBackend = backend;

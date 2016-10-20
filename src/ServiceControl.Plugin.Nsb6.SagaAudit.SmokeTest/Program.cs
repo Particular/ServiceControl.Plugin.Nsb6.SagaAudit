@@ -35,6 +35,7 @@ namespace ServiceControl.Plugin.Nsb6.SagaAudit.SmokeTest
             busConfiguration.UsePersistence<InMemoryPersistence>();
             busConfiguration.SendFailedMessagesTo("error");
             busConfiguration.AuditProcessedMessagesTo("audit");
+            busConfiguration.SagaPlugin("particular.servicecontrol");
 
             var endpoint = await Endpoint.Start(busConfiguration);
 
