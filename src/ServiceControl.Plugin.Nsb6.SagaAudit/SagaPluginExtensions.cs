@@ -2,16 +2,19 @@
 {
     using Configuration.AdvanceExtensibility;
 
+    /// <summary>
+    /// Plugin extension methods.
+    /// </summary>
     public static class SagaPluginExtensions
     {
         /// <summary>
-        /// Sets the ServiceControl url.
+        /// Sets the ServiceControl queue address.
         /// </summary>
         /// <param name="config"></param>
-        /// <param name="serviceControlUrl">ServiceControl url.</param>
-        public static void SagaPlugin(this EndpointConfiguration config, string serviceControlUrl)
+        /// <param name="serviceControlQueue">ServiceControl queue address.</param>
+        public static void SagaPlugin(this EndpointConfiguration config, string serviceControlQueue)
         {
-            config.GetSettings().Set("ServiceControl.Url", serviceControlUrl);
+            config.GetSettings().Set("ServiceControl.Queue", serviceControlQueue);
         }
     }
 }

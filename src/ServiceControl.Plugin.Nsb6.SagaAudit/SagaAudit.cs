@@ -6,14 +6,18 @@
     using Plugin;
     using Plugin.SagaAudit;
 
+    /// <summary>
+    /// The ServiceControl SagaAudit plugin.
+    /// </summary>
     public class SagaAudit : Feature
     {
-        public SagaAudit()
+        internal SagaAudit()
         {
             EnableByDefault();
             DependsOn<Sagas>();
         }
 
+        /// <summary>Called when the features is activated.</summary>
         protected override void Setup(FeatureConfigurationContext context)
         {
             context.Container.ConfigureComponent<SagaAuditSerializer>(DependencyLifecycle.SingleInstance);
@@ -33,6 +37,7 @@
         class SagaAuditStartupTask : FeatureStartupTask
         {
             ServiceControlBackend serviceControlBackend;
+
             public SagaAuditStartupTask(ServiceControlBackend backend)
             {
                 serviceControlBackend = backend;
