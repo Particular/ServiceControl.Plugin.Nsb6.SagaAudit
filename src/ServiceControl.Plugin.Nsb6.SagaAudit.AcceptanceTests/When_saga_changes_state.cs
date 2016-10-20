@@ -5,6 +5,7 @@
     using System.Linq;
     using System.Threading.Tasks;
     using EndpointPlugin.Messages.SagaState;
+    using Features;
     using NServiceBus;
     using NServiceBus.AcceptanceTesting;
     using NServiceBus.AcceptanceTests;
@@ -152,6 +153,7 @@
 
                 EndpointSetup<DefaultServer>(c =>
                 {
+                    c.DisableFeature<SagaAudit>();
                     c.UseSerialization<JsonSerializer>();
                 });
             }
