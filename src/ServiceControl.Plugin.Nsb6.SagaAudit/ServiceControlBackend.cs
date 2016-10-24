@@ -21,7 +21,6 @@
         public ServiceControlBackend(IDispatchMessages messageSender, SagaAuditSerializer serializer, ReadOnlySettings settings, CriticalError criticalError)
         {
             this.settings = settings;
-            this.criticalError = criticalError;
             this.messageSender = messageSender;
             this.serializer = serializer;
 
@@ -118,13 +117,12 @@ Please ensure that the Particular ServiceControl queue is specified either via c
             {
                 const string errMsg = @"You have ServiceControl plugins installed in your endpoint, however, this endpoint is unable to contact the ServiceControl Backend to report endpoint information.
 Please ensure that the Particular ServiceControl queue specified is correct.";
-                                      
-                criticalError.Raise(errMsg, ex);
+
+                throw new Exception(errMsg, ex);
             }
         }
 
         RepeatedFailuresOverTimeCircuitBreaker circuitBreaker;
-        CriticalError criticalError;
         IDispatchMessages messageSender;
 
         SagaAuditSerializer serializer;
