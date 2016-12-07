@@ -2,16 +2,12 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
     using System.Threading.Tasks;
     using AcceptanceTesting.Customization;
     using AcceptanceTesting.Support;
     using Config.ConfigurationSource;
     using Configuration.AdvanceExtensibility;
     using Features;
-    using Hosting.Helpers;
-    using ObjectBuilder;
     using Serialization;
 
     public class DefaultServer : IEndpointSetupTemplate
@@ -26,92 +22,42 @@
             this.typesToInclude = typesToInclude;
         }
 
-        public async Task<EndpointConfiguration> GetConfiguration(RunDescriptor runDescriptor, EndpointCustomizationConfiguration customizationConfiguration, IConfigurationSource configSource, Action<EndpointConfiguration> configurationBuilderCustomization)
+        public async Task<EndpointConfiguration> GetConfiguration(RunDescriptor runDescriptor, EndpointCustomizationConfiguration endpointConfiguration, IConfigurationSource configSource, Action<EndpointConfiguration> configurationBuilderCustomization)
         {
             var settings = runDescriptor.Settings;
 
-            var types = GetTypesScopedByTestClass(customizationConfiguration);
+            var types = endpointConfiguration.GetTypesScopedByTestClass();
 
             typesToInclude.AddRange(types);
 
-            var endpointConfiguration = new EndpointConfiguration(customizationConfiguration.EndpointName);
+            var configuration = new EndpointConfiguration(endpointConfiguration.EndpointName);
 
-            endpointConfiguration.TypesToIncludeInScan(typesToInclude);
-            endpointConfiguration.CustomConfigurationSource(configSource);
-            endpointConfiguration.EnableInstallers();
+            configuration.TypesToIncludeInScan(typesToInclude);
+            configuration.CustomConfigurationSource(configSource);
+            configuration.EnableInstallers();
 
-            endpointConfiguration.DisableFeature<TimeoutManager>();
-            endpointConfiguration.Recoverability().Delayed(cfg => cfg.NumberOfRetries(0));
-            endpointConfiguration.Recoverability().Immediate(cfg => cfg.NumberOfRetries(0));
+            configuration.DisableFeature<TimeoutManager>();
 
-            await endpointConfiguration.DefineTransport(settings, customizationConfiguration.EndpointName).ConfigureAwait(false);
+            var recoverability = configuration.Recoverability();
+            recoverability.Delayed(delayed => delayed.NumberOfRetries(0));
+            recoverability.Immediate(immediate => immediate.NumberOfRetries(0));
 
-            endpointConfiguration.DefineBuilder(settings);
-            endpointConfiguration.RegisterComponents(r => { RegisterInheritanceHierarchyOfContextOnContainer(runDescriptor, r); });
+            await configuration.DefineTransport(settings, endpointConfiguration).ConfigureAwait(false);
+
+            configuration.DefineBuilder(settings);
+            configuration.RegisterComponentsAndInheritanceHierarchy(runDescriptor);
 
             Type serializerType;
             if (settings.TryGet("Serializer", out serializerType))
             {
-                endpointConfiguration.UseSerialization((SerializationDefinition) Activator.CreateInstance(serializerType));
+                configuration.UseSerialization((SerializationDefinition) Activator.CreateInstance(serializerType));
             }
-            await endpointConfiguration.DefinePersistence(settings, customizationConfiguration.EndpointName).ConfigureAwait(false);
+            await configuration.DefinePersistence(settings, endpointConfiguration).ConfigureAwait(false);
 
-            endpointConfiguration.GetSettings().SetDefault("ScaleOut.UseSingleBrokerQueue", true);
-            configurationBuilderCustomization(endpointConfiguration);
+            configuration.GetSettings().SetDefault("ScaleOut.UseSingleBrokerQueue", true);
+            configurationBuilderCustomization(configuration);
 
-            return endpointConfiguration;
-        }
-
-        static void RegisterInheritanceHierarchyOfContextOnContainer(RunDescriptor runDescriptor, IConfigureComponents r)
-        {
-            var type = runDescriptor.ScenarioContext.GetType();
-            while (type != typeof(object))
-            {
-                r.RegisterSingleton(type, runDescriptor.ScenarioContext);
-                type = type.BaseType;
-            }
-        }
-
-        static IEnumerable<Type> GetTypesScopedByTestClass(EndpointCustomizationConfiguration endpointConfiguration)
-        {
-            var assemblies = new AssemblyScanner().GetScannableAssemblies();
-
-            var types = assemblies.Assemblies
-                //exclude all test types by default
-                .Where(a =>
-                {
-                    var references = a.GetReferencedAssemblies();
-
-                    return references.All(an => an.Name != "nunit.framework");
-                })
-                .SelectMany(a => a.GetTypes());
-
-
-            types = types.Union(GetNestedTypeRecursive(endpointConfiguration.BuilderType.DeclaringType, endpointConfiguration.BuilderType));
-
-            types = types.Union(endpointConfiguration.TypesToInclude);
-
-            return types.Where(t => !endpointConfiguration.TypesToExclude.Contains(t)).ToList();
-        }
-
-        static IEnumerable<Type> GetNestedTypeRecursive(Type rootType, Type builderType)
-        {
-            if (rootType == null)
-            {
-                throw new InvalidOperationException("Make sure you nest the endpoint infrastructure inside the TestFixture as nested classes");
-            }
-
-            yield return rootType;
-
-            if (typeof(IEndpointConfigurationFactory).IsAssignableFrom(rootType) && rootType != builderType)
-            {
-                yield break;
-            }
-
-            foreach (var nestedType in rootType.GetNestedTypes(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).SelectMany(t => GetNestedTypeRecursive(t, builderType)))
-            {
-                yield return nestedType;
-            }
+            return configuration;
         }
 
         List<Type> typesToInclude;
