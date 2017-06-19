@@ -39,7 +39,7 @@
 
             var body = ReplaceTypeToken(bodyString);
 
-            
+
             var headers = new Dictionary<string, string>
             {
                 [Headers.EnclosedMessageTypes] = messageToSend.GetType().FullName,
