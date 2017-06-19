@@ -1,88 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{D1E7266A-1FB8-4677-99E4-D98989076723}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests</RootNamespace>
-    <AssemblyName>ServiceControl.Plugin.Nsb6.SagaAudit.AcceptanceTests</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
+    <TargetFramework>net452</TargetFramework>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <DebugSymbols>True</DebugSymbols>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NServiceBus.AcceptanceTesting, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9fc386479f8a226c, processorArchitecture=MSIL">
-      <HintPath>..\packages\NServiceBus.AcceptanceTesting.6.0.0\lib\net452\NServiceBus.AcceptanceTesting.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="NServiceBus.Core, Version=6.0.0.0, Culture=neutral, PublicKeyToken=9fc386479f8a226c, processorArchitecture=MSIL">
-      <HintPath>..\packages\NServiceBus.6.0.0\lib\net452\NServiceBus.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="nunit.framework, Version=3.4.0.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\packages\NUnit.3.4.0\lib\net45\nunit.framework.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.configuration" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Messaging" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
+    <PackageReference Include="NServiceBus" Version="6.0.0" />
+    <PackageReference Include="NServiceBus.AcceptanceTesting" Version="6.0.0" />
+    <PackageReference Include="NUnit" Version="3.7.1" />
+    <ProjectReference Include="..\ServiceControl.Plugin.Nsb6.SagaAudit\ServiceControl.Plugin.Nsb6.SagaAudit.csproj" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+    <Reference Include="System.Messaging" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="ConfigureEndpointInMemoryPersistence.cs" />
-    <Compile Include="ConfigureEndpointMsmqTransport.cs" />
-    <Compile Include="SagaChangeInitiator.cs" />
-    <Compile Include="SagaChangeOutput.cs" />
-    <Compile Include="SagaUpdatedMessage.cs" />
-    <Compile Include="ScenarioDescriptors\EnvironmentHelper.cs" />
-    <Compile Include="When_a_message_is_handled_by_a_saga.cs" />
-    <Compile Include="When_saga_changes_state.cs" />
-    <Compile Include="EndpointTemplates\ConfigureExtensions.cs" />
-    <Compile Include="EndpointTemplates\DefaultServer.cs" />
-    <Compile Include="NServiceBusAcceptanceTest.cs" />
-    <Compile Include="ScenarioDescriptors\AllOutboxCapableStorages.cs" />
-    <Compile Include="ScenarioDescriptors\AllTransports.cs" />
-    <Compile Include="ScenarioDescriptors\Builders.cs" />
-    <Compile Include="ScenarioDescriptors\Persistence.cs" />
-    <Compile Include="ScenarioDescriptors\Serializers.cs" />
-    <Compile Include="ScenarioDescriptors\Transports.cs" />
-    <Compile Include="When_saga_not_found.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config">
-      <SubType>Designer</SubType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ServiceControl.Plugin.Nsb6.SagaAudit\ServiceControl.Plugin.Nsb6.SagaAudit.csproj">
-      <Project>{97079a73-235e-4d52-a6df-ebf3bf0f4971}</Project>
-      <Name>ServiceControl.Plugin.Nsb6.SagaAudit</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
