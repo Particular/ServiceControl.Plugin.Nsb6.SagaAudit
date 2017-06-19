@@ -10,9 +10,9 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NServiceBus" Version="6.0.0" />
-    <PackageReference Include="Autofac" Version="4.1.1" />
-    <PackageReference Include="NServiceBus.Autofac" Version="6.0.0" />
+    <PackageReference Include="NServiceBus" Version="6.3.4" />
+    <PackageReference Include="Autofac" Version="4.6.0" />
+    <PackageReference Include="NServiceBus.Autofac" Version="6.0.1" />
     <ProjectReference Include="..\ServiceControl.Plugin.Nsb6.SagaAudit\ServiceControl.Plugin.Nsb6.SagaAudit.csproj" />
   </ItemGroup>
 </Project>
