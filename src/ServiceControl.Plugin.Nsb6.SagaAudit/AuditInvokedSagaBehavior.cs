@@ -1,7 +1,9 @@
 ﻿namespace ServiceControl.Plugin.SagaAudit
 {
     using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
+    using NServiceBus;
     using NServiceBus.Pipeline;
     using NServiceBus.Sagas;
 
@@ -18,22 +20,27 @@
                 return;
             }
 
-            if (activeSagaInstance.Instance.Entity == null)
+            AddOrUpdateInvokedSagasHeader(context.Headers, activeSagaInstance.Instance);
+        }
+
+        public static void AddOrUpdateInvokedSagasHeader(Dictionary<string, string> headers, Saga sagaInstance)
+        {
+            if (sagaInstance.Entity == null)
             {
-                return; // Message was not handled by the saga
+                return;
             }
 
-            var invokedSagaAuditData = $"{activeSagaInstance.Instance.GetType().FullName}:{activeSagaInstance.Instance.Entity.Id}";
+            var invokedSagaAuditData = $"{sagaInstance.GetType().FullName}:{sagaInstance.Entity.Id}";
 
             string invokedSagasHeader;
 
-            if (context.MessageHeaders.TryGetValue(SagaAuditHeaders.InvokedSagas, out invokedSagasHeader))
+            if (headers.TryGetValue(SagaAuditHeaders.InvokedSagas, out invokedSagasHeader))
             {
-                context.Headers[SagaAuditHeaders.InvokedSagas] += $"{invokedSagasHeader};{invokedSagaAuditData}";
+                headers[SagaAuditHeaders.InvokedSagas] = $"{invokedSagasHeader};{invokedSagaAuditData}";
             }
             else
             {
-                context.Headers.Add(SagaAuditHeaders.InvokedSagas, invokedSagaAuditData);
+                headers.Add(SagaAuditHeaders.InvokedSagas, invokedSagaAuditData);
             }
         }
     }
