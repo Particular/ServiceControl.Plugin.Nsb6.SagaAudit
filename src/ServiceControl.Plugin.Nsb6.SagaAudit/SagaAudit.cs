@@ -1,7 +1,7 @@
 ﻿namespace ServiceControl.Features
 {
     using System.Threading.Tasks;
-    using NServiceBus;    
+    using NServiceBus;
     using NServiceBus.Features;
     using NServiceBus.Logging;
     using Plugin;
